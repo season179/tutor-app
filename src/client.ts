@@ -3,7 +3,6 @@ import {
   type VoiceClientAdapter,
   type VoiceClientEvent
 } from "./voice-client-adapter.js";
-import { tutorPolicy } from "./tutor-policy.js";
 import { parseVoiceSessionDescriptor } from "./voice-session-schema.js";
 import {
   voiceSessionPath,
@@ -605,7 +604,7 @@ function estimateVoiceUserTurnBytes(image: PreparedImage, prompt: string): numbe
   return new TextEncoder().encode(JSON.stringify(createVoiceUserTurn(image, prompt))).byteLength;
 }
 
-async function getSendableImage(): Promise<PreparedImage> {
+async function getSendableImage(defaultImagePrompt: string): Promise<PreparedImage> {
   if (!preparedImage) {
     throw new Error("Choose an image first.");
   }
@@ -616,7 +615,7 @@ async function getSendableImage(): Promise<PreparedImage> {
     return preparedImage;
   }
 
-  const prompt = imagePrompt.value.trim() || tutorPolicy.defaultImagePrompt;
+  const prompt = imagePrompt.value.trim() || defaultImagePrompt;
   const payloadBytes = estimateVoiceUserTurnBytes(preparedImage, prompt);
 
   if (payloadBytes <= messageLimit) {
@@ -669,8 +668,6 @@ async function sendImage(): Promise<void> {
     throw new Error("Choose an image first.");
   }
 
-  const prompt = imagePrompt.value.trim() || tutorPolicy.defaultImagePrompt;
-
   isPreparingImage = true;
   imageMeta.textContent =
     session?.adapter.status === "connected" ? "Checking image payload..." : "Starting tutoring...";
@@ -678,8 +675,10 @@ async function sendImage(): Promise<void> {
 
   try {
     const activeSession = await ensureSessionReadyForImage();
+    const defaultImagePrompt = activeSession.descriptor.tutorPolicy.defaultImagePrompt;
+    const prompt = imagePrompt.value.trim() || defaultImagePrompt;
     imageMeta.textContent = "Checking image payload...";
-    const image = await getSendableImage();
+    const image = await getSendableImage(defaultImagePrompt);
 
     activeSession.adapter.sendUserTurn(createVoiceUserTurn(image, prompt));
     activeSession.adapter.requestReply(activeSession.descriptor.tutorPolicy.imageResponseInstructions);

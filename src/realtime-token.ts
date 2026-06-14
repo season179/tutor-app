@@ -1,9 +1,8 @@
 import { HttpError, type JsonValue } from "./http-error.js";
-import { tutorPolicy } from "./tutor-policy.js";
 
 export type RealtimeClientSecretOptions = {
   apiKey: string | undefined;
-  instructions: string | undefined;
+  instructions: string;
   model: string | undefined;
   safetyIdentifierSeed: string | undefined;
   timeoutMs?: number;
@@ -35,7 +34,7 @@ export async function createRealtimeClientSecret(options: RealtimeClientSecretOp
       session: {
         type: "realtime",
         model: options.model ?? defaultRealtimeModel,
-        instructions: options.instructions ?? tutorPolicy.instructions,
+        instructions: options.instructions,
         audio: {
           output: {
             voice: options.voice ?? defaultRealtimeVoice
