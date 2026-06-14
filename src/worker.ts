@@ -1,26 +1,26 @@
+import { HttpError, type JsonValue } from "./http-error.js";
 import {
-  createRealtimeClientSecret,
-  defaultSafetyIdentifier,
-  HttpError,
-  tutorInstructions,
-  type JsonValue
-} from "./realtime-token.js";
+  createVoiceSessionService,
+  parseCreateVoiceSessionRequest,
+  type VoiceSessionServiceEnv
+} from "./voice-session-service.js";
+import { voiceSessionPath } from "./voice-types.js";
 
-const tokenPath = "/token";
+const maxVoiceSessionRequestBytes = 16_384;
 
 export default {
   async fetch(request, env): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === tokenPath) {
-      return handleTokenRequest(request, env, url);
+    if (url.pathname === voiceSessionPath) {
+      return handleVoiceSessionRequest(request, env, url);
     }
 
     return env.ASSETS.fetch(request);
   }
 } satisfies ExportedHandler<Env>;
 
-async function handleTokenRequest(request: Request, env: Env, url: URL): Promise<Response> {
+async function handleVoiceSessionRequest(request: Request, env: Env, url: URL): Promise<Response> {
   const baseHeaders = {
     "Cache-Control": "no-store"
   };
@@ -37,27 +37,79 @@ async function handleTokenRequest(request: Request, env: Env, url: URL): Promise
   }
 
   const callerKey = readCallerKey(request);
-  const rateLimitResponse = await limitTokenRequest(env, callerKey);
+  const rateLimitResponse = await limitVoiceSessionRequest(env, callerKey);
   if (rateLimitResponse) {
     return rateLimitResponse;
   }
 
   try {
-    const token = await createRealtimeClientSecret({
-      apiKey: env.OPENAI_API_KEY,
-      instructions: tutorInstructions,
-      model: env.OPENAI_REALTIME_MODEL,
-      safetyIdentifierSeed: `${env.OPENAI_SAFETY_IDENTIFIER ?? defaultSafetyIdentifier}:${callerKey}`,
-      voice: env.OPENAI_REALTIME_VOICE
-    });
+    const body = parseCreateVoiceSessionRequest(await readJsonRequest(request));
+    const voiceSessionService = createVoiceSessionService(createVoiceSessionServiceEnv(env));
+    const descriptor = await voiceSessionService.createSession(body, { callerKey });
 
-    return json(token, 200, baseHeaders);
+    return json(descriptor, 200, baseHeaders);
   } catch (error) {
-    return handleTokenError(error, url);
+    return handleVoiceSessionError(error, url);
   }
 }
 
-async function limitTokenRequest(env: Env, key: string): Promise<Response | undefined> {
+function createVoiceSessionServiceEnv(env: Env): VoiceSessionServiceEnv {
+  return {
+    OPENAI_API_KEY: env.OPENAI_API_KEY,
+    OPENAI_REALTIME_MODEL: env.OPENAI_REALTIME_MODEL,
+    OPENAI_REALTIME_VOICE: env.OPENAI_REALTIME_VOICE,
+    OPENAI_SAFETY_IDENTIFIER: env.OPENAI_SAFETY_IDENTIFIER,
+    VOICE_BACKEND: env.VOICE_BACKEND
+  };
+}
+
+async function readJsonRequest(request: Request): Promise<unknown> {
+  const body = await readRequestText(request, maxVoiceSessionRequestBytes);
+
+  if (!body) {
+    throw new HttpError(400, "Request body was empty");
+  }
+
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    throw new HttpError(400, "Request body was not valid JSON");
+  }
+}
+
+async function readRequestText(request: Request, maxBytes: number): Promise<string> {
+  const reader = request.body?.getReader();
+
+  if (!reader) {
+    return "";
+  }
+
+  const decoder = new TextDecoder();
+  let bytesRead = 0;
+  let text = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        return text + decoder.decode();
+      }
+
+      bytesRead += value.byteLength;
+      if (bytesRead > maxBytes) {
+        await reader.cancel();
+        throw new HttpError(413, "Request body was too large");
+      }
+
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+async function limitVoiceSessionRequest(env: Env, key: string): Promise<Response | undefined> {
   const limiter = env.REALTIME_TOKEN_RATE_LIMITER;
 
   if (!limiter) {
@@ -100,11 +152,11 @@ function readCallerKey(request: Request): string {
   return "anonymous";
 }
 
-function handleTokenError(error: unknown, url: URL): Response {
+function handleVoiceSessionError(error: unknown, url: URL): Response {
   if (error instanceof HttpError) {
     console.error(
       JSON.stringify({
-        message: "realtime client secret request failed",
+        message: "voice session request failed",
         path: url.pathname,
         status: error.status,
         details: error.payload ?? null
@@ -117,16 +169,22 @@ function handleTokenError(error: unknown, url: URL): Response {
       });
     }
 
+    if (isVoiceBackendConfigurationError(error)) {
+      return json({ error: error.message }, error.status, {
+        "Cache-Control": "no-store"
+      });
+    }
+
     const status = error.status >= 400 && error.status < 500 ? error.status : 502;
 
-    return json({ error: "Failed to create Realtime session." }, status, {
+    return json({ error: "Failed to create voice session." }, status, {
       "Cache-Control": "no-store"
     });
   }
 
   console.error(
     JSON.stringify({
-      message: "unexpected token request failure",
+      message: "unexpected voice session request failure",
       path: url.pathname,
       error: error instanceof Error ? error.message : String(error)
     })
@@ -135,6 +193,10 @@ function handleTokenError(error: unknown, url: URL): Response {
   return json({ error: "Internal server error" }, 500, {
     "Cache-Control": "no-store"
   });
+}
+
+function isVoiceBackendConfigurationError(error: HttpError): boolean {
+  return error.message.startsWith("Unsupported VOICE_BACKEND") || error.message.startsWith("VOICE_BACKEND=");
 }
 
 function json(payload: JsonValue, status: number, headers: HeadersInit = {}): Response {

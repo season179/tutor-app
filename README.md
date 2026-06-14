@@ -21,6 +21,8 @@ cp .env.example .env
 
 Set `OPENAI_API_KEY` in `.env`.
 
+`VOICE_BACKEND` defaults to `openai-realtime`. The `livekit-agents` backend is typed in the codebase for the future, but it intentionally returns a clear not-implemented error until the LiveKit room token service and agent worker are added.
+
 ## Run
 
 ```bash
@@ -31,16 +33,16 @@ Portless prints a stable local URL, normally `https://ai-tutor.localhost`. Open 
 
 ## How it works
 
-- The server keeps `OPENAI_API_KEY` private and creates a short-lived Realtime client secret at `/token`.
-- The browser uses `@openai/agents/realtime` to create a `RealtimeAgent` and `RealtimeSession`.
-- The Agents SDK WebRTC transport uses the client secret, manages the microphone/audio connection, and exposes raw Realtime events for the session log.
+- The server keeps provider secrets private and creates a normalized voice session descriptor at `POST /api/voice/session`.
+- The default `openai-realtime` backend wraps OpenAI Realtime client-secret creation behind a `VoiceSessionService`.
+- The browser uses a provider-neutral `VoiceClientAdapter`; the OpenAI adapter owns `@openai/agents/realtime`, creates the `RealtimeAgent`/`RealtimeSession`, and maps provider events into normalized UI events.
 - The session is configured for `gpt-realtime-2` with the `marin` voice and a patient tutor persona by default.
-- Image files are decoded in the browser, resized to a 2048px maximum side, flattened onto a white background, encoded as bounded JPEG data URLs, and sent as `input_image` content parts.
+- Image files are decoded in the browser, resized to a 2048px maximum side, flattened onto a white background, encoded as bounded JPEG data URLs, and sent through a provider-neutral user-turn shape.
 - Portless maps the app to a named `.localhost` URL and manages local routing behind the scenes.
 
 ## Cloudflare Workers
 
-The production deployment uses a Worker-native entrypoint in `src/worker.ts` plus Workers Static Assets for `public/`. The Worker handles `POST /token`, reads `OPENAI_API_KEY` from Cloudflare secrets, rate-limits token minting, sends OpenAI a hashed per-caller safety identifier, and serves static assets through the `ASSETS` binding.
+The production deployment uses a Worker-native entrypoint in `src/worker.ts` plus Workers Static Assets for `public/`. The Worker handles `POST /api/voice/session`, reads `OPENAI_API_KEY` from Cloudflare secrets for the default backend, rate-limits session creation, sends OpenAI a hashed per-caller safety identifier, and serves static assets through the `ASSETS` binding.
 
 For local Worker development:
 

@@ -1,37 +1,22 @@
 import {
-  OpenAIRealtimeWebRTC,
-  RealtimeAgent,
-  RealtimeSession,
-  type RealtimeSessionConfig,
-  type TransportEvent
-} from "@openai/agents/realtime";
-
-type ClientSecretResponse = {
-  value?: string;
-  client_secret?: {
-    value?: string;
-  };
-  session?: {
-    audio?: {
-      output?: {
-        voice?: string;
-      };
-    };
-    model?: string;
-    voice?: string;
-  };
-};
-
-type RealtimeCredential = {
-  clientSecret: string;
-  model?: string;
-  voice?: string;
-};
+  createVoiceClientAdapter,
+  type VoiceClientAdapter,
+  type VoiceClientEvent
+} from "./voice-client-adapter.js";
+import { tutorPolicy } from "./tutor-policy.js";
+import {
+  voiceSessionPath,
+  type CreateVoiceSessionRequest,
+  type VoicePreparedImage,
+  type VoiceSessionDescriptor,
+  type VoiceUserTurn
+} from "./voice-types.js";
 
 type TutorSessionState = {
+  adapter: VoiceClientAdapter;
+  descriptor: VoiceSessionDescriptor;
   mediaStream: MediaStream;
-  realtimeSession: RealtimeSession;
-  transport: OpenAIRealtimeWebRTC;
+  unsubscribe: () => void;
 };
 
 type StatusTone = "ready" | "working" | "connected" | "error";
@@ -90,15 +75,6 @@ const initialJpegQuality = 0.88;
 const minJpegQuality = 0.62;
 const jpegQualityStep = 0.08;
 
-const tutorInstructions =
-  "You are AI Tutor, a patient realtime voice tutor. Help students reason through homework step by step, ask a clarifying question when the goal is unclear, and guide learning instead of only giving final answers. Keep spoken replies concise unless the student asks for detail.";
-
-const greetingInstructions =
-  "Greet the user as AI Tutor, briefly invite them to ask a homework question, and keep the greeting concise.";
-
-const imageResponseInstructions =
-  "Use the attached image as learning context. Explain the problem step by step, keep the spoken reply concise, and ask one clarifying question if the student's goal is unclear.";
-
 function getElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
 
@@ -123,65 +99,114 @@ function logEvent(message: string, value?: unknown): void {
   eventLog.textContent = `[${time}] ${message}${renderedValue}\n${previousLog}`;
 }
 
-function readRealtimeCredential(payload: ClientSecretResponse): RealtimeCredential {
-  const secret = payload.value ?? payload.client_secret?.value;
-
-  if (!secret) {
-    throw new Error("Token response did not include a client secret value.");
-  }
-
-  const credential: RealtimeCredential = { clientSecret: secret };
-
-  if (payload.session?.model) {
-    credential.model = payload.session.model;
-  }
-
-  const voice = payload.session?.audio?.output?.voice ?? payload.session?.voice;
-  if (voice) {
-    credential.voice = voice;
-  }
-
-  return credential;
-}
-
 function setRunning(isRunning: boolean): void {
   startButton.disabled = isRunning;
   stopButton.disabled = !isRunning;
   updateImageControls();
 }
 
-async function fetchRealtimeCredential(): Promise<RealtimeCredential> {
-  const response = await fetch("/token", { method: "POST" });
-  const payload = (await response.json().catch(() => null)) as (ClientSecretResponse & { error?: string }) | null;
+async function fetchVoiceSessionDescriptor(): Promise<VoiceSessionDescriptor> {
+  const request: CreateVoiceSessionRequest = { intent: "tutor" };
+  const response = await fetch(voiceSessionPath, {
+    body: JSON.stringify(request),
+    headers: {
+      "Content-Type": "application/json"
+    },
+    method: "POST"
+  });
+  const payload = (await response.json().catch(() => null)) as (VoiceSessionDescriptor & { error?: string }) | null;
 
   if (!response.ok) {
-    throw new Error(payload?.error ?? `Failed to fetch Realtime client secret (${response.status}).`);
+    throw new Error(payload?.error ?? `Failed to create voice session (${response.status}).`);
   }
 
   if (!payload) {
-    throw new Error("Token response was not valid JSON.");
+    throw new Error("Voice session response was not valid JSON.");
   }
 
-  return readRealtimeCredential(payload);
+  return parseVoiceSessionDescriptor(payload);
 }
 
-function createSessionConfig(credential: RealtimeCredential): Partial<RealtimeSessionConfig> {
-  const audioOutput: { voice?: string } = {};
-
-  if (credential.voice) {
-    audioOutput.voice = credential.voice;
+function parseVoiceSessionDescriptor(value: unknown): VoiceSessionDescriptor {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Voice session response was not a JSON object.");
   }
 
-  return {
-    outputModalities: ["audio"],
-    audio: {
-      output: audioOutput
-    }
-  };
+  const descriptor = value as Record<string, unknown>;
+
+  if (descriptor.provider === "openai-realtime" && isOpenAIRealtimeSessionDescriptor(descriptor)) {
+    return descriptor;
+  }
+
+  if (descriptor.provider === "livekit-agents" && isLiveKitAgentsSessionDescriptor(descriptor)) {
+    return descriptor;
+  }
+
+  throw new Error("Voice session response did not match a supported provider shape.");
+}
+
+function isOpenAIRealtimeSessionDescriptor(
+  descriptor: Record<string, unknown>
+): descriptor is Extract<VoiceSessionDescriptor, { provider: "openai-realtime" }> {
+  return (
+    typeof descriptor.clientSecret === "string" &&
+    isVoiceCapabilities(descriptor.capabilities) &&
+    typeof descriptor.model === "string" &&
+    typeof descriptor.sessionId === "string" &&
+    isTutorPolicy(descriptor.tutorPolicy) &&
+    typeof descriptor.voice === "string"
+  );
+}
+
+function isLiveKitAgentsSessionDescriptor(
+  descriptor: Record<string, unknown>
+): descriptor is Extract<VoiceSessionDescriptor, { provider: "livekit-agents" }> {
+  return (
+    typeof descriptor.agentName === "string" &&
+    isVoiceCapabilities(descriptor.capabilities) &&
+    typeof descriptor.livekitUrl === "string" &&
+    typeof descriptor.participantIdentity === "string" &&
+    typeof descriptor.participantToken === "string" &&
+    typeof descriptor.roomName === "string" &&
+    typeof descriptor.sessionId === "string" &&
+    isTutorPolicy(descriptor.tutorPolicy)
+  );
+}
+
+function isVoiceCapabilities(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const capabilities = value as Record<string, unknown>;
+
+  return (
+    typeof capabilities.audioInput === "boolean" &&
+    typeof capabilities.audioOutput === "boolean" &&
+    typeof capabilities.imageInput === "boolean" &&
+    typeof capabilities.manualReply === "boolean" &&
+    (typeof capabilities.payloadLimitBytes === "number" || capabilities.payloadLimitBytes === null)
+  );
+}
+
+function isTutorPolicy(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const policy = value as Record<string, unknown>;
+
+  return (
+    typeof policy.agentName === "string" &&
+    typeof policy.defaultImagePrompt === "string" &&
+    typeof policy.greetingInstructions === "string" &&
+    typeof policy.imageResponseInstructions === "string" &&
+    typeof policy.instructions === "string"
+  );
 }
 
 async function startSession(options: StartSessionOptions = {}): Promise<TutorSessionState> {
-  if (session?.transport.status === "disconnected") {
+  if (session?.adapter.status === "disconnected") {
     cleanupSessionResources(session);
     session = undefined;
     setRunning(false);
@@ -205,45 +230,37 @@ async function startSession(options: StartSessionOptions = {}): Promise<TutorSes
 }
 
 async function createSession(greetOnOpen: boolean): Promise<TutorSessionState> {
-
   setRunning(true);
   setStatus("Requesting tutor session...", "working");
 
   let pendingSession: TutorSessionState | undefined;
 
   try {
-    const credential = await fetchRealtimeCredential();
+    const descriptor = await fetchVoiceSessionDescriptor();
     setStatus("Requesting microphone access...", "working");
     const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const transport = new OpenAIRealtimeWebRTC({
+    const adapter = createVoiceClientAdapter(descriptor.provider, {
       audioElement: remoteAudio,
       mediaStream
     });
-    const tutorAgent = new RealtimeAgent({
-      name: "AI Tutor",
-      instructions: tutorInstructions
-    });
-    const realtimeSession = new RealtimeSession(tutorAgent, {
-      transport,
-      config: createSessionConfig(credential),
-      ...(credential.model ? { model: credential.model } : {})
-    });
 
-    pendingSession = { mediaStream, realtimeSession, transport };
+    pendingSession = {
+      adapter,
+      descriptor,
+      mediaStream,
+      unsubscribe: () => undefined
+    };
     session = pendingSession;
-    wireSessionEvents(pendingSession);
+    pendingSession.unsubscribe = wireSessionEvents(pendingSession);
 
     setStatus("Connecting...", "working");
-    await realtimeSession.connect({ apiKey: credential.clientSecret });
+    await adapter.connect(descriptor);
     setStatus("Connected. Ask your tutor out loud.", "connected");
     updateImageControls();
-    logEvent("Realtime session connected", {
-      model: credential.model ?? "default",
-      voice: credential.voice ?? "default"
-    });
+    logEvent("Voice session connected", describeVoiceSession(descriptor));
 
     if (greetOnOpen) {
-      transport.requestResponse({ instructions: greetingInstructions });
+      adapter.requestReply(descriptor.tutorPolicy.greetingInstructions);
     }
 
     return pendingSession;
@@ -257,41 +274,72 @@ async function createSession(greetOnOpen: boolean): Promise<TutorSessionState> {
   }
 }
 
-function wireSessionEvents(activeSession: TutorSessionState): void {
-  activeSession.transport.on("connection_change", (connectionStatus) => {
-    logEvent(`Realtime connection ${connectionStatus}`);
-    updateImageControls();
+function describeVoiceSession(descriptor: VoiceSessionDescriptor): Record<string, string> {
+  if (descriptor.provider === "openai-realtime") {
+    return {
+      model: descriptor.model,
+      provider: descriptor.provider,
+      voice: descriptor.voice
+    };
+  }
 
-    if (connectionStatus !== "disconnected" || session !== activeSession) {
+  return {
+    agentName: descriptor.agentName,
+    provider: descriptor.provider,
+    roomName: descriptor.roomName
+  };
+}
+
+function wireSessionEvents(activeSession: TutorSessionState): () => void {
+  return activeSession.adapter.onEvent((event: VoiceClientEvent) => {
+    if (event.type === "debug_event") {
+      logEvent(event.label, event.value);
       return;
     }
 
-    cleanupSessionResources(activeSession);
-    session = undefined;
-    setRunning(false);
-
-    if (!isStoppingSession) {
-      setStatus("Session disconnected.", "ready");
+    if (event.type === "connecting") {
+      setStatus("Connecting...", "working");
+      return;
     }
-  });
 
-  activeSession.transport.on("*", (event: TransportEvent) => {
-    logEvent(event.type || "Realtime event", event);
-  });
-
-  activeSession.realtimeSession.on("audio_start", () => {
-    setStatus("Tutor is responding...", "connected");
-  });
-
-  activeSession.realtimeSession.on("audio_stopped", () => {
-    if (session === activeSession) {
-      setStatus("Connected. Ask your tutor out loud.", "connected");
+    if (event.type === "connected") {
+      updateImageControls();
+      return;
     }
-  });
 
-  activeSession.realtimeSession.on("error", ({ error }) => {
-    setStatus(error instanceof Error ? error.message : "Realtime session error.", "error");
-    logEvent("Realtime session error", error instanceof Error ? error.message : error);
+    if (event.type === "disconnected") {
+      updateImageControls();
+
+      if (session !== activeSession) {
+        return;
+      }
+
+      cleanupSessionResources(activeSession);
+      session = undefined;
+      setRunning(false);
+
+      if (!isStoppingSession) {
+        setStatus("Session disconnected.", "ready");
+      }
+
+      return;
+    }
+
+    if (event.type === "reply_started") {
+      setStatus("Tutor is responding...", "connected");
+      return;
+    }
+
+    if (event.type === "reply_finished") {
+      if (session === activeSession) {
+        setStatus("Connected. Ask your tutor out loud.", "connected");
+      }
+      return;
+    }
+
+    const error = event.error;
+    setStatus(error instanceof Error ? error.message : "Voice session error.", "error");
+    logEvent("Voice session error", error instanceof Error ? error.message : error);
   });
 }
 
@@ -309,7 +357,8 @@ function cleanupSession(activeSession: TutorSessionState | undefined): void {
     return;
   }
 
-  activeSession.realtimeSession.close();
+  activeSession.unsubscribe();
+  activeSession.adapter.disconnect();
   cleanupSessionResources(activeSession);
 }
 
@@ -364,19 +413,12 @@ function clearPreparedImage(message = "No problem image yet."): void {
   updateImageControls();
 }
 
-function getRealtimeMessageLimit(): number | undefined {
-  const peerConnection = session?.transport.connectionState.peerConnection;
-  const maxMessageSize = peerConnection?.sctp?.maxMessageSize;
-
-  if (!maxMessageSize || !Number.isFinite(maxMessageSize)) {
-    return undefined;
-  }
-
-  return maxMessageSize;
+function getVoiceMessageLimit(): number | undefined {
+  return session?.adapter.getPayloadLimitBytes();
 }
 
 function getImageByteLimit(): number {
-  const realtimeMessageLimit = getRealtimeMessageLimit();
+  const realtimeMessageLimit = getVoiceMessageLimit();
 
   if (!realtimeMessageLimit) {
     return defaultImageByteLimit;
@@ -618,41 +660,26 @@ async function prepareSelectedImage(file: File): Promise<void> {
   }
 }
 
-function createImageConversationEvent(image: PreparedImage, prompt: string): unknown {
+function createVoicePreparedImage(image: PreparedImage): VoicePreparedImage {
   return {
-    type: "conversation.item.create",
-    item: {
-      type: "message",
-      role: "user",
-      content: [
-        {
-          type: "input_text",
-          text: prompt
-        },
-        {
-          type: "input_image",
-          image_url: image.dataUrl
-        }
-      ]
-    }
+    dataUrl: image.dataUrl,
+    height: image.height,
+    mimeType: "image/jpeg",
+    name: image.name,
+    size: image.size,
+    width: image.width
   };
 }
 
-function createImageUserInput(image: PreparedImage, prompt: string) {
+function createVoiceUserTurn(image: PreparedImage, prompt: string): VoiceUserTurn {
   return {
-    type: "message" as const,
-    role: "user" as const,
-    content: [
-      {
-        type: "input_text" as const,
-        text: prompt
-      },
-      {
-        type: "input_image" as const,
-        image: image.dataUrl
-      }
-    ]
+    image: createVoicePreparedImage(image),
+    text: prompt
   };
+}
+
+function estimateVoiceUserTurnBytes(image: PreparedImage, prompt: string): number {
+  return new TextEncoder().encode(JSON.stringify(createVoiceUserTurn(image, prompt))).byteLength;
 }
 
 async function getSendableImage(): Promise<PreparedImage> {
@@ -660,14 +687,14 @@ async function getSendableImage(): Promise<PreparedImage> {
     throw new Error("Choose an image first.");
   }
 
-  const messageLimit = getRealtimeMessageLimit();
+  const messageLimit = getVoiceMessageLimit();
 
   if (!messageLimit) {
     return preparedImage;
   }
 
-  const prompt = imagePrompt.value.trim() || "Help me understand this problem step by step.";
-  const payloadBytes = new TextEncoder().encode(JSON.stringify(createImageConversationEvent(preparedImage, prompt))).byteLength;
+  const prompt = imagePrompt.value.trim() || tutorPolicy.defaultImagePrompt;
+  const payloadBytes = estimateVoiceUserTurnBytes(preparedImage, prompt);
 
   if (payloadBytes <= messageLimit) {
     return preparedImage;
@@ -679,7 +706,7 @@ async function getSendableImage(): Promise<PreparedImage> {
 
   const targetBytes = Math.max(80_000, Math.floor((messageLimit - imageJsonOverheadBytes) * 0.72));
   const image = await prepareImage(selectedImageFile, targetBytes);
-  const resizedBytes = new TextEncoder().encode(JSON.stringify(createImageConversationEvent(image, prompt))).byteLength;
+  const resizedBytes = estimateVoiceUserTurnBytes(image, prompt);
 
   if (resizedBytes > messageLimit) {
     throw new Error("The image is too large for this WebRTC session, even after resizing.");
@@ -696,7 +723,7 @@ async function getSendableImage(): Promise<PreparedImage> {
 async function ensureSessionReadyForImage(): Promise<TutorSessionState> {
   const activeSession = session;
 
-  if (activeSession?.transport.status === "connected") {
+  if (activeSession?.adapter.status === "connected") {
     return activeSession;
   }
 
@@ -719,11 +746,11 @@ async function sendImage(): Promise<void> {
     throw new Error("Choose an image first.");
   }
 
-  const prompt = imagePrompt.value.trim() || "Help me understand this problem step by step.";
+  const prompt = imagePrompt.value.trim() || tutorPolicy.defaultImagePrompt;
 
   isPreparingImage = true;
   imageMeta.textContent =
-    session?.transport.status === "connected" ? "Checking image payload..." : "Starting tutoring...";
+    session?.adapter.status === "connected" ? "Checking image payload..." : "Starting tutoring...";
   updateImageControls();
 
   try {
@@ -731,8 +758,8 @@ async function sendImage(): Promise<void> {
     imageMeta.textContent = "Checking image payload...";
     const image = await getSendableImage();
 
-    activeSession.transport.sendMessage(createImageUserInput(image, prompt), {}, { triggerResponse: false });
-    activeSession.transport.requestResponse({ instructions: imageResponseInstructions });
+    activeSession.adapter.sendUserTurn(createVoiceUserTurn(image, prompt));
+    activeSession.adapter.requestReply(activeSession.descriptor.tutorPolicy.imageResponseInstructions);
 
     setStatus("Problem image sent. Waiting for your tutor...", "working");
     imageMeta.textContent = describePreparedImage(image);

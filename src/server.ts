@@ -5,24 +5,19 @@ import { readFile } from "node:fs/promises";
 import { extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { HttpError, type JsonValue } from "./http-error.js";
 import {
-  createRealtimeClientSecret,
-  defaultRealtimeModel,
-  defaultRealtimeVoice,
-  defaultSafetyIdentifier,
-  HttpError,
-  tutorInstructions,
-  type JsonValue
-} from "./realtime-token.js";
+  createVoiceSessionService,
+  parseCreateVoiceSessionRequest,
+  type VoiceSessionServiceEnv
+} from "./voice-session-service.js";
+import { voiceSessionPath } from "./voice-types.js";
 
 const rootDir = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const publicDir = join(rootDir, "public");
 
 const port = readPort(process.env.PORT);
 const host = process.env.HOST;
-const model = process.env.OPENAI_REALTIME_MODEL ?? defaultRealtimeModel;
-const voice = process.env.OPENAI_REALTIME_VOICE ?? defaultRealtimeVoice;
-const safetyIdentifierSeed = process.env.OPENAI_SAFETY_IDENTIFIER ?? defaultSafetyIdentifier;
 
 const mimeTypes = new Map<string, string>([
   [".css", "text/css; charset=utf-8"],
@@ -83,6 +78,44 @@ function getStaticPath(pathname: string): string {
   return filePath;
 }
 
+async function readJsonRequest<T>(req: IncomingMessage, maxBytes = 16_384): Promise<T> {
+  const chunks: Buffer[] = [];
+  let bytesRead = 0;
+
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    bytesRead += buffer.byteLength;
+
+    if (bytesRead > maxBytes) {
+      throw new HttpError(413, "Request body was too large");
+    }
+
+    chunks.push(buffer);
+  }
+
+  const text = Buffer.concat(chunks).toString("utf8");
+
+  if (!text) {
+    throw new HttpError(400, "Request body was empty");
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new HttpError(400, "Request body was not valid JSON");
+  }
+}
+
+function createVoiceSessionServiceEnv(): VoiceSessionServiceEnv {
+  return {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
+    OPENAI_REALTIME_VOICE: process.env.OPENAI_REALTIME_VOICE,
+    OPENAI_SAFETY_IDENTIFIER: process.env.OPENAI_SAFETY_IDENTIFIER,
+    VOICE_BACKEND: process.env.VOICE_BACKEND
+  };
+}
+
 async function serveStatic(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
   if (req.method !== "GET" && req.method !== "HEAD") {
     throw new HttpError(405, "Method not allowed");
@@ -104,7 +137,7 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse, url: URL):
 async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? "/", "http://localhost");
 
-  if (url.pathname === "/token") {
+  if (url.pathname === voiceSessionPath) {
     res.setHeader("Cache-Control", "no-store");
 
     if (req.method !== "POST") {
@@ -112,14 +145,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       throw new HttpError(405, "Method not allowed");
     }
 
-    const token = await createRealtimeClientSecret({
-      apiKey: process.env.OPENAI_API_KEY,
-      instructions: tutorInstructions,
-      model,
-      safetyIdentifierSeed,
-      voice
-    });
-    sendJson(res, 200, token);
+    const body = parseCreateVoiceSessionRequest(await readJsonRequest<unknown>(req));
+    const voiceSessionService = createVoiceSessionService(createVoiceSessionServiceEnv());
+    const descriptor = await voiceSessionService.createSession(body);
+
+    sendJson(res, 200, descriptor);
     return;
   }
 
@@ -161,6 +191,7 @@ function getPublicUrl(): string {
 
 server.listen(port, host, () => {
   console.log(`AI Tutor app running at ${getPublicUrl()}`);
-  console.log(`Model: ${model}`);
-  console.log(`Voice: ${voice}`);
+  console.log(`Voice backend: ${process.env.VOICE_BACKEND ?? "openai-realtime"}`);
+  console.log(`OpenAI model: ${process.env.OPENAI_REALTIME_MODEL ?? "gpt-realtime-2"}`);
+  console.log(`OpenAI voice: ${process.env.OPENAI_REALTIME_VOICE ?? "marin"}`);
 });

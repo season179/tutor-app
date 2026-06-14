@@ -1,10 +1,5 @@
-export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue };
+import { HttpError, type JsonValue } from "./http-error.js";
+import { tutorPolicy } from "./tutor-policy.js";
 
 export type RealtimeClientSecretOptions = {
   apiKey: string | undefined;
@@ -15,22 +10,10 @@ export type RealtimeClientSecretOptions = {
   voice: string | undefined;
 };
 
-export class HttpError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-    readonly payload?: JsonValue
-  ) {
-    super(message);
-  }
-}
-
 export const defaultRealtimeModel = "gpt-realtime-2";
 export const defaultRealtimeVoice = "marin";
 export const defaultSafetyIdentifier = "local-ai-tutor-user";
 const maxOpenAiResponseBytes = 64_000;
-export const tutorInstructions =
-  "You are AI Tutor, a patient realtime voice tutor. Help students reason through homework step by step, ask a clarifying question when the goal is unclear, and guide learning instead of only giving final answers. Keep spoken replies concise unless the student asks for detail.";
 
 export async function createRealtimeClientSecret(options: RealtimeClientSecretOptions): Promise<JsonValue> {
   const apiKey = options.apiKey;
@@ -52,7 +35,7 @@ export async function createRealtimeClientSecret(options: RealtimeClientSecretOp
       session: {
         type: "realtime",
         model: options.model ?? defaultRealtimeModel,
-        instructions: options.instructions ?? tutorInstructions,
+        instructions: options.instructions ?? tutorPolicy.instructions,
         audio: {
           output: {
             voice: options.voice ?? defaultRealtimeVoice
