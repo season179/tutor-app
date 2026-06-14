@@ -23,6 +23,30 @@
           <button id="stop" type="button" disabled>Stop</button>
         </div>
 
+        <form class="image-form" id="image-form">
+          <div class="image-grid">
+            <label class="field">
+              <span>Image</span>
+              <input id="image-input" type="file" accept="image/*" />
+            </label>
+
+            <div class="image-preview-block">
+              <div class="image-preview">
+                <img id="image-preview" alt="" hidden />
+                <p id="image-empty">No image selected.</p>
+              </div>
+              <p class="image-meta" id="image-meta">No image selected.</p>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Prompt</span>
+            <textarea id="image-prompt" rows="2">What should I notice in this image?</textarea>
+          </label>
+
+          <button id="send-image" type="submit" disabled>Send image</button>
+        </form>
+
         <p class="status" id="status">Disconnected.</p>
         <audio id="remote-audio" autoplay></audio>
       </section>

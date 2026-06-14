@@ -37,6 +37,21 @@ code {
   padding: 0.1rem 0.28rem;
 }
 
+input,
+textarea {
+  border: 1px solid #c9d5e4;
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  padding: 0.75rem;
+  width: 100%;
+}
+
+textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
 .shell {
   display: grid;
   gap: 1rem;
@@ -95,6 +110,68 @@ h2 {
   margin: 1.4rem 0;
 }
 
+.image-form {
+  border-top: 1px solid #e1e8f2;
+  display: grid;
+  gap: 1rem;
+  margin: 1.4rem 0;
+  padding-top: 1.4rem;
+}
+
+.image-grid {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) 180px;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field span {
+  color: #506077;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.image-preview-block {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.image-preview {
+  align-items: center;
+  aspect-ratio: 4 / 3;
+  background: #eef3f8;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  color: #506077;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0.8rem;
+  text-align: center;
+}
+
+.image-preview img {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.image-preview p {
+  margin: 0;
+}
+
+.image-meta {
+  color: #506077;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
 #start {
   background: #123a5c;
   color: #ffffff;
@@ -103,6 +180,12 @@ h2 {
 #stop {
   background: #e7edf5;
   color: #1c2c44;
+}
+
+#send-image {
+  background: #246b56;
+  color: #ffffff;
+  justify-self: start;
 }
 
 .status {
@@ -138,5 +221,13 @@ pre {
   .controls {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .image-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #send-image {
+    justify-self: stretch;
   }
 }
