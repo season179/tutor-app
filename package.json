@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "pnpm build:client && pnpm check:worker-types && tsc -p tsconfig.server.json && tsc -p tsconfig.worker.json",
-    "build:client": "tsc -p tsconfig.client.json --noEmit && esbuild src/client.ts --bundle --format=esm --platform=browser --sourcemap --outfile=public/client.js",
+    "build:client": "tsc -p tsconfig.client.json --noEmit && esbuild src/client/main.tsx --bundle --format=esm --platform=browser --jsx=automatic --loader:.tsx=tsx --sourcemap --outfile=public/client.js",
     "check:worker-types": "wrangler types --check",
     "deploy": "pnpm build && wrangler deploy",
     "deploy:dry-run": "pnpm build && wrangler deploy --dry-run",
@@ -29,11 +29,15 @@
   "dependencies": {
     "@openai/agents": "^0.11.6",
     "dotenv": "^17.2.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260613.1",
     "@types/node": "^24.10.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "esbuild": "^0.28.1",
     "portless": "^0.14.0",
     "typescript": "^5.9.3",
