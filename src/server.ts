@@ -13,7 +13,7 @@ const port = readPort(process.env.PORT);
 const host = process.env.HOST;
 const model = process.env.OPENAI_REALTIME_MODEL ?? "gpt-realtime-2";
 const voice = process.env.OPENAI_REALTIME_VOICE ?? "marin";
-const safetyIdentifier = hashSafetyIdentifier(process.env.OPENAI_SAFETY_IDENTIFIER ?? "local-dev-user");
+const safetyIdentifier = hashSafetyIdentifier(process.env.OPENAI_SAFETY_IDENTIFIER ?? "local-ai-tutor-user");
 
 const mimeTypes = new Map<string, string>([
   [".css", "text/css; charset=utf-8"],
@@ -134,7 +134,7 @@ async function createRealtimeClientSecret(): Promise<JsonValue> {
         type: "realtime",
         model,
         instructions:
-          "You are a concise, friendly realtime voice assistant. Keep spoken replies short unless asked for detail.",
+          "You are AI Tutor, a patient realtime voice tutor. Help students reason through homework step by step, ask a clarifying question when the goal is unclear, and guide learning instead of only giving final answers. Keep spoken replies concise unless the student asks for detail.",
         audio: {
           output: {
             voice
@@ -213,7 +213,7 @@ function getPublicUrl(): string {
 }
 
 server.listen(port, host, () => {
-  console.log(`Realtime voice test app running at ${getPublicUrl()}`);
+  console.log(`AI Tutor app running at ${getPublicUrl()}`);
   console.log(`Model: ${model}`);
   console.log(`Voice: ${voice}`);
 });

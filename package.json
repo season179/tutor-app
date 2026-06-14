@@ -1,5 +1,5 @@
 {
-  "name": "test-realtime-voice-model",
+  "name": "ai-tutor",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit"
   },
   "portless": {
-    "name": "realtime-voice",
+    "name": "ai-tutor",
     "script": "dev:app"
   },
   "dependencies": {

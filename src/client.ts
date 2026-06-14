@@ -208,7 +208,7 @@ async function createSession(greetOnOpen: boolean): Promise<SessionState> {
     }
 
     dataChannel.addEventListener("open", () => {
-      setStatus("Connected. Speak into your microphone.");
+      setStatus("Connected. Ask your tutor out loud.");
       logEvent("Data channel opened");
       updateImageControls();
       if (!greetOnOpen) {
@@ -219,7 +219,8 @@ async function createSession(greetOnOpen: boolean): Promise<SessionState> {
         JSON.stringify({
           type: "response.create",
           response: {
-            instructions: "Greet the user briefly and invite them to test the voice session."
+            instructions:
+              "Greet the user as AI Tutor, briefly invite them to ask a homework question, and keep the greeting concise."
           }
         })
       );
@@ -297,7 +298,7 @@ function stopSession(): void {
   cleanupSession(session);
   session = undefined;
   setRunning(false);
-  setStatus("Disconnected.");
+  setStatus("Ready when you are.");
 }
 
 function formatBytes(value: number): string {
@@ -318,11 +319,11 @@ function updateImageControls(): void {
   sendImageButton.disabled = isPreparingImage || !preparedImage;
 }
 
-function clearPreparedImage(message = "No image selected."): void {
+function clearPreparedImage(message = "No problem image yet."): void {
   selectedImageFile = undefined;
   preparedImage = undefined;
   imageEmpty.hidden = false;
-  imageEmpty.textContent = "No image selected.";
+  imageEmpty.textContent = "No problem image yet.";
   imagePreview.hidden = true;
   imagePreview.removeAttribute("src");
   imageMeta.textContent = message;
@@ -372,7 +373,7 @@ function fitWithin(width: number, height: number, maxDimension: number): { heigh
 
 async function decodeImage(file: File): Promise<DecodedImage> {
   if (!file.type.startsWith("image/")) {
-    throw new Error("Choose an image file.");
+    throw new Error("Choose a problem image file.");
   }
 
   if ("createImageBitmap" in window) {
@@ -535,10 +536,10 @@ async function prepareSelectedImage(file: File): Promise<void> {
   preparedImage = undefined;
   isPreparingImage = true;
   imageEmpty.hidden = false;
-  imageEmpty.textContent = "Preparing image...";
+  imageEmpty.textContent = "Preparing problem image...";
   imagePreview.hidden = true;
   imagePreview.removeAttribute("src");
-  imageMeta.textContent = "Preparing image...";
+  imageMeta.textContent = "Preparing problem image...";
   updateImageControls();
 
   try {
@@ -553,7 +554,7 @@ async function prepareSelectedImage(file: File): Promise<void> {
     imagePreview.hidden = false;
     imageEmpty.hidden = true;
     imageMeta.textContent = describePreparedImage(image);
-    logEvent("Image prepared", {
+    logEvent("Problem image prepared", {
       prepared: {
         bytes: image.size,
         height: image.height,
@@ -572,8 +573,8 @@ async function prepareSelectedImage(file: File): Promise<void> {
       return;
     }
 
-    clearPreparedImage(error instanceof Error ? error.message : "Could not prepare image.");
-    logEvent("Image preparation failed", error instanceof Error ? error.message : error);
+    clearPreparedImage(error instanceof Error ? error.message : "Could not prepare the problem image.");
+    logEvent("Problem image preparation failed", error instanceof Error ? error.message : error);
   } finally {
     if (preparationId === imagePreparationId) {
       isPreparingImage = false;
@@ -613,7 +614,7 @@ async function getSendableImage(): Promise<PreparedImage> {
     return preparedImage;
   }
 
-  const prompt = imagePrompt.value.trim() || "What should I notice in this image?";
+  const prompt = imagePrompt.value.trim() || "Help me understand this problem step by step.";
   const payloadBytes = new TextEncoder().encode(JSON.stringify(createImageConversationEvent(preparedImage, prompt))).byteLength;
 
   if (payloadBytes <= messageLimit) {
@@ -648,12 +649,12 @@ async function ensureSessionReadyForImage(): Promise<SessionState> {
   }
 
   if (activeSession && activeSession.dataChannel.readyState !== "closed") {
-    setStatus("Connecting before sending image...");
+    setStatus("Connecting before sharing the problem image...");
     await activeSession.ready;
     return activeSession;
   }
 
-  setStatus("Starting voice session before sending image...");
+  setStatus("Starting tutoring before sharing the problem image...");
   const startedSession = await startSession({ greet: false });
   await startedSession.ready;
   return startedSession;
@@ -664,11 +665,11 @@ async function sendImage(): Promise<void> {
     throw new Error("Choose an image first.");
   }
 
-  const prompt = imagePrompt.value.trim() || "What should I notice in this image?";
+  const prompt = imagePrompt.value.trim() || "Help me understand this problem step by step.";
 
   isPreparingImage = true;
   imageMeta.textContent =
-    session?.dataChannel.readyState === "open" ? "Checking image payload..." : "Starting voice session...";
+    session?.dataChannel.readyState === "open" ? "Checking image payload..." : "Starting tutoring...";
   updateImageControls();
 
   try {
@@ -682,14 +683,15 @@ async function sendImage(): Promise<void> {
       JSON.stringify({
         type: "response.create",
         response: {
-          instructions: "Use the attached image when answering. Keep the spoken reply concise."
+          instructions:
+            "Use the attached image as learning context. Explain the problem step by step, keep the spoken reply concise, and ask one clarifying question if the student's goal is unclear."
         }
       })
     );
 
-    setStatus("Image sent. Waiting for the assistant...");
+    setStatus("Problem image sent. Waiting for your tutor...");
     imageMeta.textContent = describePreparedImage(image);
-    logEvent("Image sent", {
+    logEvent("Problem image sent", {
       bytes: image.size,
       height: image.height,
       prompt,
@@ -718,7 +720,7 @@ imageInput.addEventListener("change", () => {
   }
 
   prepareSelectedImage(file).catch((error: unknown) => {
-    logEvent("Image preparation failed", error instanceof Error ? error.message : error);
+    logEvent("Problem image preparation failed", error instanceof Error ? error.message : error);
   });
 });
 
@@ -726,9 +728,9 @@ imageForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
   sendImage().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : "Could not send image.";
+    const message = error instanceof Error ? error.message : "Could not send the problem image.";
     setStatus(message);
     imageMeta.textContent = message;
-    logEvent("Image send failed", error instanceof Error ? error.message : error);
+    logEvent("Problem image send failed", error instanceof Error ? error.message : error);
   });
 });
