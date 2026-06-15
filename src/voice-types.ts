@@ -6,6 +6,7 @@ export type VoiceSessionIntent = "tutor";
 
 export type CreateVoiceSessionRequest = {
   intent: VoiceSessionIntent;
+  sessionId: string;
 };
 
 export type TutorPolicy = {

@@ -20,7 +20,7 @@
     "start": "node scripts/dev.mjs --script start:app",
     "start:app": "pnpm build && node dist/server.js",
     "typecheck": "pnpm check:worker-types && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.worker.json && pnpm test",
-    "test": "node --experimental-strip-types --test test/**/*.test.ts"
+    "test": "tsc -p tsconfig.server.json && node --experimental-strip-types --test test/**/*.test.ts"
   },
   "portless": {
     "name": "ai-tutor",
@@ -29,6 +29,7 @@
   "dependencies": {
     "@openai/agents": "^0.11.6",
     "dotenv": "^17.2.3",
+    "jose": "^6.2.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "zod": "^4.4.3"

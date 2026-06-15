@@ -10,6 +10,7 @@ import {
   type CreateVoiceSessionRequest,
   type VoiceSessionDescriptor
 } from "../../voice-types.js";
+import { updateSession } from "../lib/session-api.js";
 import type { AppStatus, StatusTone, TutorSessionState } from "../types.js";
 
 type StartSessionOptions = {
@@ -18,7 +19,8 @@ type StartSessionOptions = {
 
 type UseVoiceSessionOptions = {
   audioRef: RefObject<HTMLAudioElement | null>;
-  logEvent: (message: string, value?: unknown) => void;
+  logEvent: (message: string, value?: unknown, persistSessionId?: string) => void;
+  sessionId: string | undefined;
 };
 
 function describeVoiceSession(descriptor: VoiceSessionDescriptor): Record<string, string> {
@@ -37,7 +39,7 @@ function describeVoiceSession(descriptor: VoiceSessionDescriptor): Record<string
   };
 }
 
-export function useVoiceSession({ audioRef, logEvent }: UseVoiceSessionOptions): {
+export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessionOptions): {
   isRunning: boolean;
   getPayloadLimitBytes: () => number | undefined;
   getSession: () => TutorSessionState | undefined;
@@ -55,7 +57,10 @@ export function useVoiceSession({ audioRef, logEvent }: UseVoiceSessionOptions):
 
   const sessionRef = useRef<TutorSessionState | undefined>(undefined);
   const startSessionPromiseRef = useRef<Promise<TutorSessionState> | undefined>(undefined);
+  const startGenerationRef = useRef(0);
   const isStoppingSessionRef = useRef(false);
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
 
   const setStatus = useCallback((message: string, tone: StatusTone = "ready") => {
     setStatusState({ message, tone });
@@ -110,6 +115,13 @@ export function useVoiceSession({ audioRef, logEvent }: UseVoiceSessionOptions):
 
           if (!isStoppingSessionRef.current) {
             setStatus("Session disconnected.", "ready");
+
+            const activeSessionId = sessionIdRef.current;
+            if (activeSessionId) {
+              void updateSession(activeSessionId, { status: "ended" }).catch(() => {
+                // Status sync failures should not block local cleanup.
+              });
+            }
           }
 
           return;
@@ -137,7 +149,15 @@ export function useVoiceSession({ audioRef, logEvent }: UseVoiceSessionOptions):
   );
 
   const fetchVoiceSessionDescriptor = useCallback(async (): Promise<VoiceSessionDescriptor> => {
-    const request: CreateVoiceSessionRequest = { intent: "tutor" };
+    const activeSessionId = sessionIdRef.current;
+    if (!activeSessionId) {
+      throw new Error("Choose a tutoring session first.");
+    }
+
+    const request: CreateVoiceSessionRequest = {
+      intent: "tutor",
+      sessionId: activeSessionId
+    };
     const response = await fetch(voiceSessionPath, {
       body: JSON.stringify(request),
       headers: {
@@ -160,15 +180,24 @@ export function useVoiceSession({ audioRef, logEvent }: UseVoiceSessionOptions):
 
   const createSession = useCallback(
     async (greetOnOpen: boolean): Promise<TutorSessionState> => {
+      const generation = startGenerationRef.current;
       setIsRunning(true);
       setStatus("Requesting tutor session...", "working");
 
       let pendingSession: TutorSessionState | undefined;
 
+      const assertNotCancelled = () => {
+        if (generation !== startGenerationRef.current) {
+          throw new Error("Voice session start cancelled.");
+        }
+      };
+
       try {
         const descriptor = await fetchVoiceSessionDescriptor();
+        assertNotCancelled();
         setStatus("Requesting microphone access...", "working");
         const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        assertNotCancelled();
 
         if (!audioRef.current) {
           throw new Error("Audio element is not ready.");
@@ -190,6 +219,7 @@ export function useVoiceSession({ audioRef, logEvent }: UseVoiceSessionOptions):
 
         setStatus("Connecting...", "working");
         await adapter.connect(descriptor);
+        assertNotCancelled();
         setStatus("Connected. Ask your tutor out loud.", "connected");
         logEvent("Voice session connected", describeVoiceSession(descriptor));
 
@@ -202,6 +232,12 @@ export function useVoiceSession({ audioRef, logEvent }: UseVoiceSessionOptions):
         cleanupSession(pendingSession);
         sessionRef.current = undefined;
         setIsRunning(false);
+
+        if (error instanceof Error && error.message === "Voice session start cancelled.") {
+          setStatus("Ready when you are.");
+          throw error;
+        }
+
         setStatus(error instanceof Error ? error.message : "Failed to start session.", "error");
         logEvent("Start failed", error instanceof Error ? error.message : error);
         throw error;
@@ -240,10 +276,14 @@ export function useVoiceSession({ audioRef, logEvent }: UseVoiceSessionOptions):
   );
 
   const stopSession = useCallback(() => {
+    startGenerationRef.current += 1;
+    startSessionPromiseRef.current = undefined;
+
     const activeSession = sessionRef.current;
 
     if (!activeSession) {
       setIsRunning(false);
+      setStatus("Ready when you are.");
       return;
     }
 
@@ -254,10 +294,18 @@ export function useVoiceSession({ audioRef, logEvent }: UseVoiceSessionOptions):
       cleanupSession(activeSession);
       setIsRunning(false);
       setStatus("Ready when you are.");
+      logEvent("Voice session ended");
+
+      const activeSessionId = sessionIdRef.current;
+      if (activeSessionId) {
+        void updateSession(activeSessionId, { status: "ended" }).catch(() => {
+          // Status sync failures should not block ending the live call.
+        });
+      }
     } finally {
       isStoppingSessionRef.current = false;
     }
-  }, [cleanupSession, setStatus]);
+  }, [cleanupSession, logEvent, setStatus]);
 
   const ensureSessionReadyForImage = useCallback(async (): Promise<TutorSessionState> => {
     const activeSession = sessionRef.current;

@@ -5,12 +5,23 @@ import { Panel } from "./Panel.js";
 
 type VoiceSessionPanelProps = {
   audioRef: RefObject<HTMLAudioElement | null>;
+  hasPriorActivity: boolean;
   isRunning: boolean;
   onStart: () => void;
   onStop: () => void;
+  sessionReady: boolean;
 };
 
-export function VoiceSessionPanel({ audioRef, isRunning, onStart, onStop }: VoiceSessionPanelProps) {
+export function VoiceSessionPanel({
+  audioRef,
+  hasPriorActivity,
+  isRunning,
+  onStart,
+  onStop,
+  sessionReady
+}: VoiceSessionPanelProps) {
+  const startLabel = hasPriorActivity ? "Continue tutoring" : "Start tutoring";
+
   return (
     <Panel
       className="session-panel"
@@ -19,8 +30,13 @@ export function VoiceSessionPanel({ audioRef, isRunning, onStart, onStop }: Voic
       title="Voice session"
     >
       <div className="controls">
-        <ActionButton disabled={isRunning} icon="play" onClick={onStart} variant="primary">
-          Start tutoring
+        <ActionButton
+          disabled={!sessionReady || isRunning}
+          icon="play"
+          onClick={onStart}
+          variant="primary"
+        >
+          {startLabel}
         </ActionButton>
         <ActionButton disabled={!isRunning} icon="stop" onClick={onStop} variant="secondary">
           End session

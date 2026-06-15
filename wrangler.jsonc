@@ -7,14 +7,24 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/voice/session"]
+    "run_worker_first": ["/api/voice/session", "/api/sessions", "/api/sessions/*"]
   },
   "vars": {
     "VOICE_BACKEND": "openai-realtime",
     "OPENAI_REALTIME_MODEL": "gpt-realtime-2",
     "OPENAI_REALTIME_VOICE": "marin",
-    "OPENAI_SAFETY_IDENTIFIER": "cloudflare-ai-tutor-user"
+    "OPENAI_SAFETY_IDENTIFIER": "cloudflare-ai-tutor-user",
+    "TEAM_DOMAIN": "https://your-team.cloudflareaccess.com",
+    "POLICY_AUD": "your-access-application-aud-tag"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ai-tutor-sessions",
+      "database_id": "de91aacb-27a7-4b10-a117-8f300664695d",
+      "migrations_dir": "migrations"
+    }
+  ],
   "secrets": {
     "required": ["OPENAI_API_KEY"]
   },

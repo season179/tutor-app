@@ -5,13 +5,13 @@ import { readFile } from "node:fs/promises";
 import { extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { handleApiRequest, type ApiHandlerEnv } from "./api-handler.js";
 import { HttpError, type JsonValue } from "./http-error.js";
-import { createVoiceSession } from "./voice-session-handler.js";
-import { type VoiceSessionServiceEnv } from "./voice-session-service.js";
-import { voiceSessionPath } from "./voice-types.js";
+import { MemorySessionStore } from "./memory-session-store.js";
 
 const rootDir = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const publicDir = join(rootDir, "public");
+const sessionStore = new MemorySessionStore();
 
 const port = readPort(process.env.PORT);
 const host = process.env.HOST;
@@ -50,6 +50,7 @@ function sendJson(
 ): void {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
     ...headers
   });
   res.end(JSON.stringify(payload));
@@ -75,44 +76,6 @@ function getStaticPath(pathname: string): string {
   return filePath;
 }
 
-async function readJsonRequest<T>(req: IncomingMessage, maxBytes = 16_384): Promise<T> {
-  const chunks: Buffer[] = [];
-  let bytesRead = 0;
-
-  for await (const chunk of req) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    bytesRead += buffer.byteLength;
-
-    if (bytesRead > maxBytes) {
-      throw new HttpError(413, "Request body was too large");
-    }
-
-    chunks.push(buffer);
-  }
-
-  const text = Buffer.concat(chunks).toString("utf8");
-
-  if (!text) {
-    throw new HttpError(400, "Request body was empty");
-  }
-
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new HttpError(400, "Request body was not valid JSON");
-  }
-}
-
-function createVoiceSessionServiceEnv(): VoiceSessionServiceEnv {
-  return {
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
-    OPENAI_REALTIME_VOICE: process.env.OPENAI_REALTIME_VOICE,
-    OPENAI_SAFETY_IDENTIFIER: process.env.OPENAI_SAFETY_IDENTIFIER,
-    VOICE_BACKEND: process.env.VOICE_BACKEND
-  };
-}
-
 async function serveStatic(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
   if (req.method !== "GET" && req.method !== "HEAD") {
     throw new HttpError(405, "Method not allowed");
@@ -131,20 +94,83 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse, url: URL):
   res.end(body);
 }
 
-async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const url = new URL(req.url ?? "/", "http://localhost");
+function createApiHandlerEnv(): ApiHandlerEnv {
+  return {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
+    OPENAI_REALTIME_VOICE: process.env.OPENAI_REALTIME_VOICE,
+    OPENAI_SAFETY_IDENTIFIER: process.env.OPENAI_SAFETY_IDENTIFIER,
+    VOICE_BACKEND: process.env.VOICE_BACKEND,
+    ...(process.env.ACCESS_DEV_IDENTITY ? { ACCESS_DEV_IDENTITY: process.env.ACCESS_DEV_IDENTITY } : {}),
+    ...(process.env.POLICY_AUD ? { POLICY_AUD: process.env.POLICY_AUD } : {}),
+    ...(process.env.TEAM_DOMAIN ? { TEAM_DOMAIN: process.env.TEAM_DOMAIN } : {})
+  };
+}
 
-  if (url.pathname === voiceSessionPath) {
-    res.setHeader("Cache-Control", "no-store");
+const maxRequestBodyBytes = 16 * 1024;
 
-    if (req.method !== "POST") {
-      res.setHeader("Allow", "POST");
-      throw new HttpError(405, "Method not allowed");
+async function readRequestBody(req: IncomingMessage): Promise<ArrayBuffer> {
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += buffer.byteLength;
+
+    if (totalBytes > maxRequestBodyBytes) {
+      throw new Error("Request body too large.");
     }
 
-    const descriptor = await createVoiceSession(await readJsonRequest<unknown>(req), createVoiceSessionServiceEnv());
+    chunks.push(buffer);
+  }
 
-    sendJson(res, 200, descriptor);
+  const body = Buffer.concat(chunks);
+  return body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);
+}
+
+async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const headers = new Headers();
+
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (typeof value === "string") {
+      headers.set(key, value);
+    } else if (Array.isArray(value)) {
+      for (const entry of value) {
+        headers.append(key, entry);
+      }
+    }
+  }
+
+  const requestInit: RequestInit = {
+    headers,
+    method: req.method ?? "GET"
+  };
+
+  try {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      requestInit.body = await readRequestBody(req);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message === "Request body too large.") {
+      res.writeHead(413, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ error: "Request body too large." }));
+      return;
+    }
+
+    throw error;
+  }
+
+  const request = new Request(url, requestInit);
+
+  const apiResponse = await handleApiRequest(request, createApiHandlerEnv(), {
+    allowDevBypass: true,
+    store: sessionStore
+  });
+
+  if (apiResponse) {
+    res.writeHead(apiResponse.status, Object.fromEntries(apiResponse.headers.entries()));
+    res.end(Buffer.from(await apiResponse.arrayBuffer()));
     return;
   }
 
@@ -190,3 +216,5 @@ server.listen(port, host, () => {
   console.log(`OpenAI model: ${process.env.OPENAI_REALTIME_MODEL ?? "gpt-realtime-2"}`);
   console.log(`OpenAI voice: ${process.env.OPENAI_REALTIME_VOICE ?? "marin"}`);
 });
+
+export { sessionStore };

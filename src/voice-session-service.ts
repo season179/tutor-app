@@ -16,6 +16,7 @@ import type {
 
 export type VoiceSessionContext = {
   callerKey?: string;
+  sessionId?: string;
 };
 
 export type VoiceSessionService = {
@@ -94,7 +95,7 @@ class OpenAIRealtimeSessionService implements VoiceSessionService {
       clientSecret: readOpenAIClientSecret(payload),
       model: readOpenAISessionString(payload, "model") ?? this.options.model,
       provider: "openai-realtime",
-      sessionId: crypto.randomUUID(),
+      sessionId: context.sessionId ?? crypto.randomUUID(),
       tutorPolicy,
       voice: readOpenAISessionVoice(payload) ?? this.options.voice
     });
