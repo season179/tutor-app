@@ -102,7 +102,7 @@ export class MemorySessionStore implements SessionStore {
     sessionId: string,
     request: AppendSessionEventRequest
   ): Promise<SessionEventRecord> {
-    const session = await this.requireOwnedSession(ownerKey, sessionId);
+    const session = this.requireOwnedSession(ownerKey, sessionId);
     const createdAt = nowIso();
     const event = createSessionEventRecord(sessionId, this.nextEventId++, createdAt, request);
 
@@ -161,7 +161,7 @@ export class MemorySessionStore implements SessionStore {
     return this.toRecord(session);
   }
 
-  private async requireOwnedSession(ownerKey: string, sessionId: string): Promise<StoredSession> {
+  private requireOwnedSession(ownerKey: string, sessionId: string): StoredSession {
     const session = this.getOwnedSession(ownerKey, sessionId);
     if (!session) {
       throw new Error("Session not found");
