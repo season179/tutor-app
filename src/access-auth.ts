@@ -47,6 +47,10 @@ function createRequestContext(identity: AccessIdentity): RequestContext {
   };
 }
 
+function unauthorized(): HttpError {
+  return new HttpError(403, "Unauthorized");
+}
+
 function normalizeTeamDomain(teamDomain: string): string {
   return teamDomain.startsWith("https://") ? teamDomain : `https://${teamDomain}`;
 }
@@ -59,7 +63,7 @@ export async function verifyAccessJwt(
   const policyAud = env.POLICY_AUD?.trim();
 
   if (!teamDomain || !policyAud) {
-    throw new HttpError(403, "Unauthorized");
+    throw unauthorized();
   }
 
   const issuer = normalizeTeamDomain(teamDomain);
@@ -73,7 +77,7 @@ export async function verifyAccessJwt(
 
     const sub = typeof payload.sub === "string" ? payload.sub.trim() : "";
     if (!sub) {
-      throw new HttpError(403, "Unauthorized");
+      throw unauthorized();
     }
 
     return createAccessIdentity(sub, payload.email);
@@ -82,7 +86,7 @@ export async function verifyAccessJwt(
       throw error;
     }
 
-    throw new HttpError(403, "Unauthorized");
+    throw unauthorized();
   }
 }
 
@@ -105,5 +109,5 @@ export async function authenticateRequest(
     }
   }
 
-  throw new HttpError(403, "Unauthorized");
+  throw unauthorized();
 }
