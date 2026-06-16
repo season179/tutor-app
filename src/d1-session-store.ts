@@ -15,7 +15,8 @@ import {
   mapD1SessionRow,
   nowIso,
   rowStringOrNull,
-  serializeImageMeta
+  serializeImageMeta,
+  toSessionSummary
 } from "./memory-session-store.js";
 
 export class D1SessionStore implements SessionStore {
@@ -136,16 +137,9 @@ export class D1SessionStore implements SessionStore {
       .bind(ownerKey)
       .all();
 
-    return (result.results ?? []).map((row) => {
-      const session = mapD1SessionRow(row as Record<string, unknown>);
-      return {
-        createdAt: session.createdAt,
-        id: session.id,
-        status: session.status,
-        title: session.title,
-        updatedAt: session.updatedAt
-      };
-    });
+    return (result.results ?? []).map((row) =>
+      toSessionSummary(mapD1SessionRow(row as Record<string, unknown>))
+    );
   }
 
   async sessionExists(ownerKey: string, sessionId: string): Promise<boolean> {

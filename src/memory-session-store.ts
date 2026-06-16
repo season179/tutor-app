@@ -59,7 +59,7 @@ function serializeImageMeta(value: SessionImageMeta | null | undefined): string 
   return value ? JSON.stringify(value) : null;
 }
 
-function toSummary(session: TutorSessionRecord): TutorSessionSummary {
+function toSessionSummary(session: TutorSessionRecord): TutorSessionSummary {
   return {
     createdAt: session.createdAt,
     id: session.id,
@@ -130,7 +130,7 @@ export class MemorySessionStore implements SessionStore {
     return [...this.sessions.values()]
       .filter((session) => session.ownerKey === ownerKey)
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-      .map((session) => toSummary(this.toRecord(session)));
+      .map((session) => toSessionSummary(this.toRecord(session)));
   }
 
   async sessionExists(ownerKey: string, sessionId: string): Promise<boolean> {
@@ -229,4 +229,4 @@ export function mapD1EventRow(row: Record<string, unknown>): SessionEventRecord 
   };
 }
 
-export { defaultTitle, nowIso, parseImageMeta, rowStringOrNull, serializeImageMeta };
+export { defaultTitle, nowIso, parseImageMeta, rowStringOrNull, serializeImageMeta, toSessionSummary };
