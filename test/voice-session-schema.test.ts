@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   parseVoiceSessionDescriptor,
   serializeVoiceSessionDescriptor
-} from "../src/voice-session-schema.ts";
+} from "../dist/voice-session-schema.js";
 import type { OpenAIRealtimeSessionDescriptor } from "../src/voice-types.ts";
 
 const tutorPolicy = {

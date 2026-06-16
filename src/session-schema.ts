@@ -11,6 +11,7 @@ import type {
   TutorSessionSummary,
   UpdateTutorSessionRequest
 } from "./session-types.js";
+import { parseObjectWithSchema } from "./schema-parser.js";
 
 const tutorSessionStatusSchema = z.enum(["draft", "active", "ended"]) satisfies z.ZodType<TutorSessionStatus>;
 
@@ -87,17 +88,10 @@ export function parseAppendSessionEventRequest(value: unknown): AppendSessionEve
 }
 
 function parseWithSchema<T>(schema: z.ZodType<T>, value: unknown, label: string): T {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`${label} must be a JSON object.`);
-  }
-
-  const result = schema.safeParse(value);
-
-  if (!result.success) {
-    throw new Error(`${label} was invalid.`);
-  }
-
-  return result.data;
+  return parseObjectWithSchema(schema, value, {
+    invalid: `${label} was invalid.`,
+    notObject: `${label} must be a JSON object.`
+  });
 }
 
 function omitUndefinedProperties<T extends object>(value: T): T {

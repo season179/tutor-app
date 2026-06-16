@@ -7,6 +7,7 @@ import type {
   VoiceCapabilities,
   VoiceSessionDescriptor
 } from "./voice-types.js";
+import { parseObjectWithSchema } from "./schema-parser.js";
 
 const tutorPolicySchema = z.object({
   agentName: z.string().min(1),
@@ -52,17 +53,10 @@ export const voiceSessionDescriptorSchema = z.discriminatedUnion("provider", [
 ]);
 
 export function parseVoiceSessionDescriptor(value: unknown): VoiceSessionDescriptor {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("Voice session response was not a JSON object.");
-  }
-
-  const result = voiceSessionDescriptorSchema.safeParse(value);
-
-  if (!result.success) {
-    throw new Error("Voice session response did not match a supported provider shape.");
-  }
-
-  return result.data;
+  return parseObjectWithSchema(voiceSessionDescriptorSchema, value, {
+    invalid: "Voice session response did not match a supported provider shape.",
+    notObject: "Voice session response was not a JSON object."
+  });
 }
 
 export function serializeVoiceSessionDescriptor(descriptor: VoiceSessionDescriptor): VoiceSessionDescriptor {
