@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 import { createApiHandlerEnv, handleApiRequest } from "./api-handler.js";
 import { HttpError, type JsonValue } from "./http-error.js";
 import { MemorySessionStore } from "./memory-session-store.js";
+import { defaultRealtimeModel, defaultRealtimeVoice } from "./realtime-token.js";
+import { defaultVoiceBackend } from "./voice-session-service.js";
 
 const rootDir = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const publicDir = join(rootDir, "public");
@@ -199,9 +201,9 @@ function getPublicUrl(): string {
 
 server.listen(port, host, () => {
   console.log(`AI Tutor app running at ${getPublicUrl()}`);
-  console.log(`Voice backend: ${process.env.VOICE_BACKEND ?? "openai-realtime"}`);
-  console.log(`OpenAI model: ${process.env.OPENAI_REALTIME_MODEL ?? "gpt-realtime-2"}`);
-  console.log(`OpenAI voice: ${process.env.OPENAI_REALTIME_VOICE ?? "marin"}`);
+  console.log(`Voice backend: ${process.env.VOICE_BACKEND ?? defaultVoiceBackend}`);
+  console.log(`OpenAI model: ${process.env.OPENAI_REALTIME_MODEL ?? defaultRealtimeModel}`);
+  console.log(`OpenAI voice: ${process.env.OPENAI_REALTIME_VOICE ?? defaultRealtimeVoice}`);
 });
 
 export { sessionStore };

@@ -38,7 +38,7 @@ type OpenAIRealtimeSessionServiceOptions = {
   voice: string;
 };
 
-const defaultVoiceBackend: VoiceBackend = "openai-realtime";
+export const defaultVoiceBackend: VoiceBackend = "openai-realtime";
 
 export function createVoiceSessionService(env: VoiceSessionServiceEnv): VoiceSessionService {
   const backend = readVoiceBackend(env.VOICE_BACKEND);
