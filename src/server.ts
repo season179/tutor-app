@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { handleApiRequest, type ApiHandlerEnv } from "./api-handler.js";
+import { createApiHandlerEnv, handleApiRequest } from "./api-handler.js";
 import { HttpError, type JsonValue } from "./http-error.js";
 import { MemorySessionStore } from "./memory-session-store.js";
 
@@ -94,19 +94,6 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse, url: URL):
   res.end(body);
 }
 
-function createApiHandlerEnv(): ApiHandlerEnv {
-  return {
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
-    OPENAI_REALTIME_VOICE: process.env.OPENAI_REALTIME_VOICE,
-    OPENAI_SAFETY_IDENTIFIER: process.env.OPENAI_SAFETY_IDENTIFIER,
-    VOICE_BACKEND: process.env.VOICE_BACKEND,
-    ...(process.env.ACCESS_DEV_IDENTITY ? { ACCESS_DEV_IDENTITY: process.env.ACCESS_DEV_IDENTITY } : {}),
-    ...(process.env.POLICY_AUD ? { POLICY_AUD: process.env.POLICY_AUD } : {}),
-    ...(process.env.TEAM_DOMAIN ? { TEAM_DOMAIN: process.env.TEAM_DOMAIN } : {})
-  };
-}
-
 const maxRequestBodyBytes = 16 * 1024;
 
 async function readRequestBody(req: IncomingMessage): Promise<ArrayBuffer> {
@@ -163,7 +150,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   const request = new Request(url, requestInit);
 
-  const apiResponse = await handleApiRequest(request, createApiHandlerEnv(), {
+  const apiResponse = await handleApiRequest(request, createApiHandlerEnv(process.env), {
     allowDevBypass: true,
     store: sessionStore
   });

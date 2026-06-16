@@ -1,4 +1,4 @@
-import { handleApiRequest, type ApiHandlerEnv } from "./api-handler.js";
+import { createApiHandlerEnv, handleApiRequest } from "./api-handler.js";
 import { D1SessionStore } from "./d1-session-store.js";
 import type { SessionStore } from "./session-store.js";
 import { voiceSessionPath } from "./voice-types.js";
@@ -27,18 +27,6 @@ export default {
 
 function createSessionStore(env: Env): SessionStore {
   return new D1SessionStore(env.DB);
-}
-
-function createApiHandlerEnv(env: Env): ApiHandlerEnv {
-  return {
-    OPENAI_API_KEY: env.OPENAI_API_KEY,
-    OPENAI_REALTIME_MODEL: env.OPENAI_REALTIME_MODEL,
-    OPENAI_REALTIME_VOICE: env.OPENAI_REALTIME_VOICE,
-    OPENAI_SAFETY_IDENTIFIER: env.OPENAI_SAFETY_IDENTIFIER,
-    POLICY_AUD: env.POLICY_AUD,
-    TEAM_DOMAIN: env.TEAM_DOMAIN,
-    VOICE_BACKEND: env.VOICE_BACKEND
-  };
 }
 
 async function limitVoiceSessionRequest(env: Env, key: string): Promise<Response | undefined> {

@@ -10,10 +10,34 @@ import { readJsonBody } from "./session-handler.js";
 
 export type ApiHandlerEnv = AccessAuthEnv & VoiceSessionServiceEnv;
 
+export type ApiHandlerEnvSource = {
+  ACCESS_DEV_IDENTITY?: string;
+  OPENAI_API_KEY?: string;
+  OPENAI_REALTIME_MODEL?: string;
+  OPENAI_REALTIME_VOICE?: string;
+  OPENAI_SAFETY_IDENTIFIER?: string;
+  POLICY_AUD?: string;
+  TEAM_DOMAIN?: string;
+  VOICE_BACKEND?: string;
+};
+
 export type ApiHandlerOptions = {
   allowDevBypass?: boolean;
   store: SessionStore;
 };
+
+export function createApiHandlerEnv(source: ApiHandlerEnvSource): ApiHandlerEnv {
+  return {
+    OPENAI_API_KEY: source.OPENAI_API_KEY,
+    OPENAI_REALTIME_MODEL: source.OPENAI_REALTIME_MODEL,
+    OPENAI_REALTIME_VOICE: source.OPENAI_REALTIME_VOICE,
+    OPENAI_SAFETY_IDENTIFIER: source.OPENAI_SAFETY_IDENTIFIER,
+    VOICE_BACKEND: source.VOICE_BACKEND,
+    ...(source.ACCESS_DEV_IDENTITY ? { ACCESS_DEV_IDENTITY: source.ACCESS_DEV_IDENTITY } : {}),
+    ...(source.POLICY_AUD ? { POLICY_AUD: source.POLICY_AUD } : {}),
+    ...(source.TEAM_DOMAIN ? { TEAM_DOMAIN: source.TEAM_DOMAIN } : {})
+  };
+}
 
 function json(payload: JsonValue, status: number, headers: Record<string, string> = {}): Response {
   return Response.json(payload, {
