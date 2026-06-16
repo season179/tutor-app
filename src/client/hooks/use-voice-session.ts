@@ -15,6 +15,7 @@ type StartSessionOptions = {
 };
 
 const connectedStatusMessage = "Connected. Ask your tutor out loud.";
+const connectingStatusMessage = "Connecting...";
 const readyStatusMessage = "Ready when you are.";
 const startCancelledMessage = "Voice session start cancelled.";
 
@@ -125,7 +126,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
             logEvent(event.label, event.value);
             return;
           case "connecting":
-            setStatus("Connecting...", "working");
+            setStatus(connectingStatusMessage, "working");
             return;
           case "disconnected":
             if (sessionRef.current !== activeSession) {
@@ -205,7 +206,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
         sessionRef.current = pendingSession;
         pendingSession.unsubscribe = wireSessionEvents(pendingSession);
 
-        setStatus("Connecting...", "working");
+        setStatus(connectingStatusMessage, "working");
         await adapter.connect(descriptor);
         assertNotCancelled();
         setStatus(connectedStatusMessage, "connected");
