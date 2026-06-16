@@ -4,6 +4,7 @@ import {
   type CreateVoiceSessionRequest,
   type VoiceSessionDescriptor
 } from "../../voice-types.js";
+import { jsonRequestInit } from "./json-request.js";
 import { readJsonResponse } from "./read-json-response.js";
 
 export async function requestVoiceSessionDescriptor(sessionId: string): Promise<VoiceSessionDescriptor> {
@@ -11,13 +12,7 @@ export async function requestVoiceSessionDescriptor(sessionId: string): Promise<
     intent: "tutor",
     sessionId
   };
-  const response = await fetch(voiceSessionPath, {
-    body: JSON.stringify(request),
-    headers: {
-      "Content-Type": "application/json"
-    },
-    method: "POST"
-  });
+  const response = await fetch(voiceSessionPath, jsonRequestInit("POST", request));
   const payload = await readJsonResponse<unknown>(
     response,
     (_status, message) => new Error(message),

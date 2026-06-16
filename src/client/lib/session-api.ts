@@ -6,6 +6,7 @@ import {
   type TutorSessionSummary,
   type UpdateTutorSessionRequest
 } from "../../session-types.js";
+import { jsonRequestInit } from "./json-request.js";
 import { readJsonResponse } from "./read-json-response.js";
 
 export class SessionApiError extends Error {
@@ -40,22 +41,12 @@ function getJson<T>(input: string): Promise<T> {
   });
 }
 
-function jsonBodyInit(method: "PATCH" | "POST", body: unknown): RequestInit {
-  return {
-    body: JSON.stringify(body),
-    headers: {
-      "Content-Type": "application/json"
-    },
-    method
-  };
-}
-
 export async function listSessions(): Promise<TutorSessionSummary[]> {
   return getJson<TutorSessionSummary[]>(sessionsPath);
 }
 
 export async function createSession(title?: string): Promise<TutorSessionRecord> {
-  return fetchJson<TutorSessionRecord>(sessionsPath, jsonBodyInit("POST", title ? { title } : {}));
+  return fetchJson<TutorSessionRecord>(sessionsPath, jsonRequestInit("POST", title ? { title } : {}));
 }
 
 export async function getSession(sessionId: string): Promise<TutorSessionDetail> {
@@ -66,12 +57,12 @@ export async function updateSession(
   sessionId: string,
   request: UpdateTutorSessionRequest
 ): Promise<TutorSessionRecord> {
-  return fetchJson<TutorSessionRecord>(`${sessionsPath}/${sessionId}`, jsonBodyInit("PATCH", request));
+  return fetchJson<TutorSessionRecord>(`${sessionsPath}/${sessionId}`, jsonRequestInit("PATCH", request));
 }
 
 export async function appendSessionEvent(
   sessionId: string,
   request: AppendSessionEventRequest
 ): Promise<void> {
-  await fetchJson<unknown>(`${sessionsPath}/${sessionId}/events`, jsonBodyInit("POST", request));
+  await fetchJson<unknown>(`${sessionsPath}/${sessionId}/events`, jsonRequestInit("POST", request));
 }
