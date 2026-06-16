@@ -9,7 +9,7 @@ import { sessionsPath } from "./session-types.js";
 import type { RequestContext } from "./request-context.js";
 import { readLimitedTextBody } from "./read-limited-text.js";
 
-const maxRequestBytes = 16_384;
+export const maxJsonRequestBodyBytes = 16_384;
 
 function methodNotAllowed(): HttpError {
   return new HttpError(405, "Method not allowed");
@@ -96,7 +96,7 @@ export function parseSessionRoute(pathname: string):
   return null;
 }
 
-export async function readJsonBody(request: Request, maxBytes = maxRequestBytes): Promise<unknown> {
+export async function readJsonBody(request: Request, maxBytes = maxJsonRequestBodyBytes): Promise<unknown> {
   const text = await readLimitedTextBody(
     request.body,
     maxBytes,

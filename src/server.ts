@@ -9,6 +9,7 @@ import { createApiHandlerEnv, handleApiRequest } from "./api-handler.js";
 import { HttpError, type JsonValue } from "./http-error.js";
 import { MemorySessionStore } from "./memory-session-store.js";
 import { defaultRealtimeModel, defaultRealtimeVoice } from "./realtime-token.js";
+import { maxJsonRequestBodyBytes } from "./session-handler.js";
 import { defaultVoiceBackend } from "./voice-session-service.js";
 
 const rootDir = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -96,8 +97,6 @@ async function serveStatic(req: IncomingMessage, res: ServerResponse, url: URL):
   res.end(body);
 }
 
-const maxRequestBodyBytes = 16 * 1024;
-
 async function readRequestBody(req: IncomingMessage): Promise<ArrayBuffer> {
   const chunks: Buffer[] = [];
   let totalBytes = 0;
@@ -106,7 +105,7 @@ async function readRequestBody(req: IncomingMessage): Promise<ArrayBuffer> {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     totalBytes += buffer.byteLength;
 
-    if (totalBytes > maxRequestBodyBytes) {
+    if (totalBytes > maxJsonRequestBodyBytes) {
       throw new Error(requestBodyTooLargeMessage);
     }
 
