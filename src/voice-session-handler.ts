@@ -1,4 +1,4 @@
-import { HttpError } from "./http-error.js";
+import { HttpError, sessionNotFoundHttpError } from "./http-error.js";
 import type { RequestContext } from "./request-context.js";
 import type { SessionStore } from "./session-store.js";
 import {
@@ -60,7 +60,7 @@ export async function createVoiceSessionWithStore(
   const request = parseCreateVoiceSessionRequest(body);
   const owned = await store.sessionExists(requestContext.ownerKey, request.sessionId);
   if (!owned) {
-    throw new HttpError(404, "Session not found");
+    throw sessionNotFoundHttpError();
   }
 
   const voiceContext: VoiceSessionContext = {

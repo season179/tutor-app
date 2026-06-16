@@ -15,3 +15,7 @@ export class HttpError extends Error {
     super(message);
   }
 }
+
+export function sessionNotFoundHttpError(): HttpError {
+  return new HttpError(404, "Session not found");
+}

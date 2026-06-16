@@ -1,4 +1,4 @@
-import { HttpError } from "./http-error.js";
+import { HttpError, sessionNotFoundHttpError } from "./http-error.js";
 import {
   parseAppendSessionEventRequest,
   parseCreateTutorSessionRequest,
@@ -11,17 +11,13 @@ import { readLimitedTextBody } from "./read-limited-text.js";
 
 const maxRequestBytes = 16_384;
 
-function sessionNotFound(): HttpError {
-  return new HttpError(404, "Session not found");
-}
-
 function methodNotAllowed(): HttpError {
   return new HttpError(405, "Method not allowed");
 }
 
 function requireSessionResult<T>(value: T | null): T {
   if (value === null) {
-    throw sessionNotFound();
+    throw sessionNotFoundHttpError();
   }
 
   return value;
@@ -68,7 +64,7 @@ export async function appendSessionEvent(
   try {
     return await store.appendEvent(context.ownerKey, sessionId, request);
   } catch {
-    throw sessionNotFound();
+    throw sessionNotFoundHttpError();
   }
 }
 
