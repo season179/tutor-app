@@ -15,6 +15,10 @@ function sessionNotFound(): HttpError {
   return new HttpError(404, "Session not found");
 }
 
+function methodNotAllowed(): HttpError {
+  return new HttpError(405, "Method not allowed");
+}
+
 function requireSessionResult<T>(value: T | null): T {
   if (value === null) {
     throw sessionNotFound();
@@ -128,33 +132,32 @@ export async function handleSessionsRequest(
     throw new HttpError(404, "Not found");
   }
 
-  if (route.kind === "collection") {
-    if (request.method === "GET") {
-      return listSessions(context, store);
-    }
+  switch (route.kind) {
+    case "collection":
+      if (request.method === "GET") {
+        return listSessions(context, store);
+      }
 
-    if (request.method === "POST") {
-      return createSession(await readJsonBody(request), context, store);
-    }
+      if (request.method === "POST") {
+        return createSession(await readJsonBody(request), context, store);
+      }
 
-    throw new HttpError(405, "Method not allowed");
+      break;
+    case "detail":
+      if (request.method === "GET") {
+        return getSession(route.sessionId, context, store);
+      }
+
+      if (request.method === "PATCH") {
+        return updateSession(route.sessionId, await readJsonBody(request), context, store);
+      }
+
+      break;
+    case "events":
+      if (request.method === "POST") {
+        return appendSessionEvent(route.sessionId, await readJsonBody(request), context, store);
+      }
   }
 
-  if (route.kind === "detail") {
-    if (request.method === "GET") {
-      return getSession(route.sessionId, context, store);
-    }
-
-    if (request.method === "PATCH") {
-      return updateSession(route.sessionId, await readJsonBody(request), context, store);
-    }
-
-    throw new HttpError(405, "Method not allowed");
-  }
-
-  if (request.method === "POST") {
-    return appendSessionEvent(route.sessionId, await readJsonBody(request), context, store);
-  }
-
-  throw new HttpError(405, "Method not allowed");
+  throw methodNotAllowed();
 }
