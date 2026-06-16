@@ -1,7 +1,4 @@
 import { formatBytes } from "./format-bytes.js";
-import { getImageByteLimit, getImageResizeByteLimit, imageJsonOverheadBytes } from "./image-byte-limit.js";
-
-export { getImageByteLimit, getImageResizeByteLimit, imageJsonOverheadBytes };
 
 export type PreparedImage = {
   dataUrl: string;

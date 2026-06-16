@@ -3,10 +3,9 @@ import { useCallback, useRef, useState } from "react";
 import type { SessionImageMeta } from "../../session-types.js";
 import type { VoicePreparedImage, VoiceUserTurn } from "../../voice-types.js";
 import { errorLogValue, errorMessage } from "../lib/error-message.js";
+import { getImageByteLimit, getImageResizeByteLimit } from "../lib/image-byte-limit.js";
 import {
   describePreparedImage,
-  getImageByteLimit,
-  getImageResizeByteLimit,
   prepareImage,
   type PreparedImage
 } from "../lib/image-preparation.js";
