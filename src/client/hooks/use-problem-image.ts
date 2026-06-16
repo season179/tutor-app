@@ -211,7 +211,7 @@ export function useProblemImage({
   );
 
   const getSendableImage = useCallback(
-    async (defaultPrompt: string, prompt: string): Promise<PreparedImage> => {
+    async (prompt: string): Promise<PreparedImage> => {
       if (!preparedImage) {
         throw new Error("Choose an image first.");
       }
@@ -262,7 +262,7 @@ export function useProblemImage({
       const fallbackPrompt = activeSession.descriptor.tutorPolicy.defaultImagePrompt;
       const prompt = imagePrompt.trim() || fallbackPrompt;
       setImageMeta("Checking image payload...");
-      const image = await getSendableImage(fallbackPrompt, prompt);
+      const image = await getSendableImage(prompt);
 
       activeSession.adapter.sendUserTurn(createVoiceUserTurn(image, prompt));
       activeSession.adapter.requestReply(activeSession.descriptor.tutorPolicy.imageResponseInstructions);
