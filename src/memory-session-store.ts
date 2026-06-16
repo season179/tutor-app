@@ -34,22 +34,31 @@ function rowStringOrNull(value: unknown): string | null {
   return value ? String(value) : null;
 }
 
-function parseImageMeta(value: string | null): SessionImageMeta | null {
+function parseJsonOrNull(value: string | null): unknown {
   if (!value) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(value) as SessionImageMeta;
-    if (
-      typeof parsed.bytes === "number" &&
-      typeof parsed.height === "number" &&
-      typeof parsed.width === "number"
-    ) {
-      return parsed;
-    }
+    return JSON.parse(value) as unknown;
   } catch {
     return null;
+  }
+}
+
+function parseImageMeta(value: string | null): SessionImageMeta | null {
+  const parsed = parseJsonOrNull(value);
+  if (!parsed || typeof parsed !== "object") {
+    return null;
+  }
+
+  const meta = parsed as SessionImageMeta;
+  if (
+    typeof meta.bytes === "number" &&
+    typeof meta.height === "number" &&
+    typeof meta.width === "number"
+  ) {
+    return meta;
   }
 
   return null;
@@ -195,21 +204,12 @@ export function mapD1SessionRow(row: Record<string, unknown>): TutorSessionRecor
 }
 
 export function mapD1EventRow(row: Record<string, unknown>): SessionEventRecord {
-  let value: unknown = null;
-  if (row.value_json) {
-    try {
-      value = JSON.parse(String(row.value_json));
-    } catch {
-      value = null;
-    }
-  }
-
   return {
     createdAt: String(row.created_at),
     id: Number(row.id),
     message: String(row.message),
     sessionId: String(row.session_id),
-    value
+    value: parseJsonOrNull(rowStringOrNull(row.value_json))
   };
 }
 
