@@ -31,26 +31,6 @@ export function parseCreateVoiceSessionRequest(value: unknown): CreateVoiceSessi
   };
 }
 
-export async function createVoiceSession(
-  body: unknown,
-  env: VoiceSessionServiceEnv,
-  context: VoiceSessionContext = {}
-): Promise<VoiceSessionDescriptor> {
-  const request = parseCreateVoiceSessionRequest(body);
-  return createVoiceSessionDescriptor(request, env, context);
-}
-
-async function createVoiceSessionDescriptor(
-  request: CreateVoiceSessionRequest,
-  env: VoiceSessionServiceEnv,
-  context: VoiceSessionContext = {}
-): Promise<VoiceSessionDescriptor> {
-  const voiceSessionService = createVoiceSessionService(env);
-  const descriptor = await voiceSessionService.createSession(request, context);
-
-  return serializeVoiceSessionDescriptor(descriptor);
-}
-
 export async function createVoiceSessionWithStore(
   body: unknown,
   env: VoiceSessionServiceEnv,
@@ -68,8 +48,9 @@ export async function createVoiceSessionWithStore(
     sessionId: request.sessionId
   };
 
-  const descriptor = await createVoiceSessionDescriptor(request, env, voiceContext);
+  const voiceSessionService = createVoiceSessionService(env);
+  const descriptor = await voiceSessionService.createSession(request, voiceContext);
   await store.updateSession(requestContext.ownerKey, request.sessionId, { status: "active" });
 
-  return descriptor;
+  return serializeVoiceSessionDescriptor(descriptor);
 }
