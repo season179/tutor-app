@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getImageByteLimit, imageJsonOverheadBytes } from "../src/client/lib/image-byte-limit.ts";
+import {
+  getImageByteLimit,
+  getImageResizeByteLimit,
+  imageJsonOverheadBytes
+} from "../src/client/lib/image-byte-limit.ts";
 
 test("getImageByteLimit returns the default when no realtime limit is known", () => {
   assert.equal(getImageByteLimit(undefined), 1_500_000);
@@ -16,4 +20,8 @@ test("getImageByteLimit scales down for small WebRTC payload limits", () => {
 
 test("getImageByteLimit falls back to the default for unusable limits", () => {
   assert.equal(getImageByteLimit(1_000), 1_500_000);
+});
+
+test("getImageResizeByteLimit preserves the send-time resize floor for unusable limits", () => {
+  assert.equal(getImageResizeByteLimit(1_000), 80_000);
 });

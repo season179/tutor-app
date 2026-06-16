@@ -5,7 +5,7 @@ import type { VoicePreparedImage, VoiceUserTurn } from "../../voice-types.js";
 import {
   describePreparedImage,
   getImageByteLimit,
-  imageJsonOverheadBytes,
+  getImageResizeByteLimit,
   prepareImage,
   type PreparedImage
 } from "../lib/image-preparation.js";
@@ -232,7 +232,7 @@ export function useProblemImage({
         throw new Error("The prepared image is too large for this WebRTC session.");
       }
 
-      const targetBytes = Math.max(80_000, Math.floor((messageLimit - imageJsonOverheadBytes) * 0.72));
+      const targetBytes = getImageResizeByteLimit(messageLimit);
       const image = await prepareImage(selectedImageFile, targetBytes);
       const resizedBytes = estimateVoiceUserTurnBytes(image, prompt);
 
