@@ -138,19 +138,19 @@ function readOpenAIClientSecret(payload: JsonValue): string {
 }
 
 function readOpenAISessionString(payload: JsonValue, key: string): string | undefined {
-  const root = asRecord(payload);
-  const session = asRecord(root.session);
-
-  return asString(session[key]);
+  return asString(readOpenAISession(payload)[key]);
 }
 
 function readOpenAISessionVoice(payload: JsonValue): string | undefined {
-  const root = asRecord(payload);
-  const session = asRecord(root.session);
+  const session = readOpenAISession(payload);
   const audio = asRecord(session.audio);
   const output = asRecord(audio.output);
 
   return asString(output.voice) ?? asString(session.voice);
+}
+
+function readOpenAISession(payload: JsonValue): Record<string, JsonValue> {
+  return asRecord(asRecord(payload).session);
 }
 
 function asRecord(value: JsonValue | undefined): Record<string, JsonValue> {
