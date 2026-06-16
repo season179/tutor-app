@@ -218,21 +218,17 @@ export function useProblemImage({
   );
 
   const getSendableImage = useCallback(
-    async (prompt: string): Promise<PreparedImage> => {
-      if (!preparedImage) {
-        throw new Error(chooseImageFirstMessage);
-      }
-
+    async (image: PreparedImage, prompt: string): Promise<PreparedImage> => {
       const messageLimit = getPayloadLimitBytes();
 
       if (!messageLimit) {
-        return preparedImage;
+        return image;
       }
 
-      const payloadBytes = estimateVoiceUserTurnBytes(preparedImage, prompt);
+      const payloadBytes = estimateVoiceUserTurnBytes(image, prompt);
 
       if (payloadBytes <= messageLimit) {
-        return preparedImage;
+        return image;
       }
 
       if (!selectedImageFile) {
@@ -240,18 +236,18 @@ export function useProblemImage({
       }
 
       const targetBytes = getImageResizeByteLimit(messageLimit);
-      const image = await prepareImage(selectedImageFile, targetBytes);
-      const resizedBytes = estimateVoiceUserTurnBytes(image, prompt);
+      const resizedImage = await prepareImage(selectedImageFile, targetBytes);
+      const resizedBytes = estimateVoiceUserTurnBytes(resizedImage, prompt);
 
       if (resizedBytes > messageLimit) {
         throw new Error("The image is too large for this WebRTC session, even after resizing.");
       }
 
-      setPreparedImage(image);
-      setImageMeta(describePreparedImage(image));
-      return image;
+      setPreparedImage(resizedImage);
+      setImageMeta(describePreparedImage(resizedImage));
+      return resizedImage;
     },
-    [getPayloadLimitBytes, preparedImage, selectedImageFile]
+    [getPayloadLimitBytes, selectedImageFile]
   );
 
   const sendImage = useCallback(async () => {
@@ -269,7 +265,7 @@ export function useProblemImage({
       const fallbackPrompt = activeSession.descriptor.tutorPolicy.defaultImagePrompt;
       const prompt = imagePrompt.trim() || fallbackPrompt;
       setImageMeta(checkingImagePayloadMessage);
-      const image = await getSendableImage(prompt);
+      const image = await getSendableImage(preparedImage, prompt);
 
       activeSession.adapter.sendUserTurn(createVoiceUserTurn(image, prompt));
       activeSession.adapter.requestReply(activeSession.descriptor.tutorPolicy.imageResponseInstructions);
