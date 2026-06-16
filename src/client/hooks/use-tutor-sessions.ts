@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { toTutorSessionSummary, type TutorSessionSummary } from "../../session-types.js";
+import {
+  toTutorSessionSummary,
+  type TutorSessionRecord,
+  type TutorSessionSummary
+} from "../../session-types.js";
 import { errorMessage } from "../lib/error-message.js";
 import { formatEventEntry } from "../lib/format-event-entry.js";
 import {
@@ -45,6 +49,16 @@ function toSessionListError(error: unknown): SessionListError {
   return {
     kind: "unknown",
     message: errorMessage(error, "Could not load sessions.")
+  };
+}
+
+function toLoadedSessionContext(
+  session: Pick<TutorSessionRecord, "imageMeta" | "imageName" | "imagePrompt">
+): LoadedSessionContext {
+  return {
+    imageMeta: session.imageMeta,
+    imageName: session.imageName,
+    imagePrompt: session.imagePrompt ?? defaultImagePrompt
   };
 }
 
@@ -115,11 +129,7 @@ export function useTutorSessions({
 
       setEventCount(detail.events.length);
       loadEventLog(entries);
-      loadSessionContext({
-        imageMeta: detail.session.imageMeta,
-        imageName: detail.session.imageName,
-        imagePrompt: detail.session.imagePrompt ?? defaultImagePrompt
-      });
+      loadSessionContext(toLoadedSessionContext(detail.session));
     },
     [loadEventLog, loadSessionContext]
   );
@@ -195,11 +205,7 @@ export function useTutorSessions({
 
       clearEventLog();
       resetProblemImage();
-      loadSessionContext({
-        imageMeta: null,
-        imageName: null,
-        imagePrompt: defaultImagePrompt
-      });
+      loadSessionContext(toLoadedSessionContext(created));
       setEventCount(0);
       persistActiveSessionId(created.id);
       setStatus("New session ready.", "ready");
