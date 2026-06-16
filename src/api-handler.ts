@@ -3,7 +3,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 import { authenticateRequest, type AccessAuthEnv } from "./access-auth.js";
 import { HttpError, type JsonValue } from "./http-error.js";
 import type { SessionStore } from "./session-store.js";
-import { parseSessionRoute, handleSessionsRequest } from "./session-handler.js";
+import { handleSessionsRequest } from "./session-handler.js";
 import { sessionsPath } from "./session-types.js";
 import { createVoiceSessionWithStore } from "./voice-session-handler.js";
 import { type VoiceSessionServiceEnv } from "./voice-session-service.js";
@@ -63,11 +63,6 @@ export async function handleApiRequest(
       );
 
       return json(descriptor, 200);
-    }
-
-    const route = parseSessionRoute(url.pathname);
-    if (!route) {
-      return json({ error: "Not found" }, 404);
     }
 
     const payload = await handleSessionsRequest(request, context, options.store);
