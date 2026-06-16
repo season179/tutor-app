@@ -15,10 +15,7 @@ import {
   updateSession
 } from "../lib/session-api.js";
 import type { LoadedSessionContext, SessionListError, StatusTone } from "../types.js";
-import {
-  activeSessionStorageKey,
-  defaultImagePrompt
-} from "../types.js";
+import { activeSessionStorageKey } from "../types.js";
 
 type UseTutorSessionsOptions = {
   clearEventLog: () => void;
@@ -58,7 +55,7 @@ function toLoadedSessionContext(
   return {
     imageMeta: session.imageMeta,
     imageName: session.imageName,
-    imagePrompt: session.imagePrompt ?? defaultImagePrompt
+    imagePrompt: session.imagePrompt
   };
 }
 

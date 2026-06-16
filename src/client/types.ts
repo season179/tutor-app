@@ -19,7 +19,7 @@ export type TutorSessionState = {
 export type LoadedSessionContext = {
   imageMeta: SessionImageMeta | null;
   imageName: string | null;
-  imagePrompt: string;
+  imagePrompt: string | null;
 };
 
 export type SessionListErrorKind = "auth" | "network" | "unknown";
