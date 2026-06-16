@@ -105,49 +105,44 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
   const wireSessionEvents = useCallback(
     (activeSession: TutorSessionState): (() => void) =>
       activeSession.adapter.onEvent((event: VoiceClientEvent) => {
-        if (event.type === "debug_event") {
-          logEvent(event.label, event.value);
-          return;
-        }
+        switch (event.type) {
+          case "debug_event":
+            logEvent(event.label, event.value);
+            return;
+          case "connecting":
+            setStatus("Connecting...", "working");
+            return;
+          case "disconnected":
+            if (sessionRef.current !== activeSession) {
+              return;
+            }
 
-        if (event.type === "connecting") {
-          setStatus("Connecting...", "working");
-          return;
-        }
+            cleanupSessionResources(activeSession);
+            sessionRef.current = undefined;
+            setIsRunning(false);
 
-        if (event.type === "disconnected") {
-          if (sessionRef.current !== activeSession) {
+            if (!isStoppingSessionRef.current) {
+              setStatus("Session disconnected.", "ready");
+              markCurrentSessionEnded();
+            }
+
+            return;
+          case "reply_started":
+            setStatus("Tutor is responding...", "connected");
+            return;
+          case "reply_finished":
+            if (sessionRef.current === activeSession) {
+              setStatus("Connected. Ask your tutor out loud.", "connected");
+            }
+            return;
+          case "error": {
+            const error = event.error;
+            setStatus(error instanceof Error ? error.message : "Voice session error.", "error");
+            logEvent("Voice session error", error instanceof Error ? error.message : error);
             return;
           }
-
-          cleanupSessionResources(activeSession);
-          sessionRef.current = undefined;
-          setIsRunning(false);
-
-          if (!isStoppingSessionRef.current) {
-            setStatus("Session disconnected.", "ready");
-            markCurrentSessionEnded();
-          }
-
-          return;
-        }
-
-        if (event.type === "reply_started") {
-          setStatus("Tutor is responding...", "connected");
-          return;
-        }
-
-        if (event.type === "reply_finished") {
-          if (sessionRef.current === activeSession) {
-            setStatus("Connected. Ask your tutor out loud.", "connected");
-          }
-          return;
-        }
-
-        if (event.type === "error") {
-          const error = event.error;
-          setStatus(error instanceof Error ? error.message : "Voice session error.", "error");
-          logEvent("Voice session error", error instanceof Error ? error.message : error);
+          case "connected":
+            return;
         }
       }),
     [cleanupSessionResources, logEvent, markCurrentSessionEnded, setStatus]
