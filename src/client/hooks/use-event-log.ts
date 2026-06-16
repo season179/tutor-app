@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type RefObject } from "react";
+import { useCallback, useState, type RefObject } from "react";
 
 import { formatEventEntry } from "../lib/format-event-entry.js";
 import { appendSessionEvent } from "../lib/session-api.js";
@@ -13,8 +13,6 @@ export function useEventLog(
   loadEventLog: (entries: string[]) => void;
 } {
   const [entries, setEntries] = useState<string[]>([]);
-  const entriesRef = useRef(entries);
-  entriesRef.current = entries;
 
   const appendLocalEntry = useCallback((message: string, value?: unknown) => {
     setEntries((previous) => [formatEventEntry(new Date(), message, value), ...previous]);
