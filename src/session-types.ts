@@ -65,6 +65,10 @@ export function toTutorSessionSummary(session: TutorSessionRecord): TutorSession
   };
 }
 
+function updateValue<T>(value: T | undefined, fallback: T): T {
+  return value === undefined ? fallback : value;
+}
+
 export function applyTutorSessionUpdate(
   session: TutorSessionRecord,
   request: UpdateTutorSessionRequest,
@@ -72,11 +76,11 @@ export function applyTutorSessionUpdate(
 ): TutorSessionRecord {
   return {
     ...session,
-    imageMeta: request.imageMeta !== undefined ? request.imageMeta : session.imageMeta,
-    imageName: request.imageName !== undefined ? request.imageName : session.imageName,
-    imagePrompt: request.imagePrompt !== undefined ? request.imagePrompt : session.imagePrompt,
-    status: request.status !== undefined ? request.status : session.status,
-    title: request.title !== undefined ? request.title.trim() : session.title,
+    imageMeta: updateValue(request.imageMeta, session.imageMeta),
+    imageName: updateValue(request.imageName, session.imageName),
+    imagePrompt: updateValue(request.imagePrompt, session.imagePrompt),
+    status: updateValue(request.status, session.status),
+    title: updateValue(request.title?.trim(), session.title),
     updatedAt
   };
 }
