@@ -203,10 +203,10 @@ export function useTutorSessions({
     return runSessionSwitch(async () => {
       const created = await createSession();
       const nextSessions = await refreshSessions();
-      const ordered = nextSessions.some((session) => session.id === created.id)
-        ? nextSessions
-        : [created, ...nextSessions];
-      setSessions(ordered);
+
+      if (!nextSessions.some((session) => session.id === created.id)) {
+        setSessions([created, ...nextSessions]);
+      }
 
       clearEventLog();
       resetProblemImage();
