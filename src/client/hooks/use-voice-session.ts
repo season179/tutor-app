@@ -88,6 +88,15 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
     [cleanupSessionResources]
   );
 
+  const clearDisconnectedSession = useCallback(
+    (activeSession: TutorSessionState) => {
+      cleanupSessionResources(activeSession);
+      sessionRef.current = undefined;
+      setIsRunning(false);
+    },
+    [cleanupSessionResources]
+  );
+
   const markCurrentSessionEnded = useCallback(() => {
     const activeSessionId = sessionIdRef.current;
     if (!activeSessionId) {
@@ -114,9 +123,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
               return;
             }
 
-            cleanupSessionResources(activeSession);
-            sessionRef.current = undefined;
-            setIsRunning(false);
+            clearDisconnectedSession(activeSession);
 
             if (!isStoppingSessionRef.current) {
               setStatus("Session disconnected.", "ready");
@@ -223,9 +230,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
       const activeSession = sessionRef.current;
 
       if (activeSession?.adapter.status === "disconnected") {
-        cleanupSessionResources(activeSession);
-        sessionRef.current = undefined;
-        setIsRunning(false);
+        clearDisconnectedSession(activeSession);
       }
 
       if (sessionRef.current) {
@@ -244,7 +249,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
         startSessionPromiseRef.current = undefined;
       }
     },
-    [cleanupSessionResources, createSession]
+    [clearDisconnectedSession, createSession]
   );
 
   const stopSession = useCallback(() => {
