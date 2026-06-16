@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   appendSessionEventRequestSchema,
   createTutorSessionRequestSchema,
+  parseCreateTutorSessionRequest,
+  parseUpdateTutorSessionRequest,
   updateTutorSessionRequestSchema
 } from "../src/session-schema.ts";
 
@@ -17,12 +19,22 @@ test("createTutorSessionRequestSchema accepts a title", () => {
   });
 });
 
+test("parseCreateTutorSessionRequest omits undefined optional fields", () => {
+  assert.deepEqual(parseCreateTutorSessionRequest({ title: undefined }), {});
+});
+
 test("updateTutorSessionRequestSchema requires at least one field", () => {
   assert.equal(updateTutorSessionRequestSchema.safeParse({}).success, false);
 });
 
 test("updateTutorSessionRequestSchema accepts status updates", () => {
   assert.deepEqual(updateTutorSessionRequestSchema.parse({ status: "active" }), {
+    status: "active"
+  });
+});
+
+test("parseUpdateTutorSessionRequest omits undefined optional fields", () => {
+  assert.deepEqual(parseUpdateTutorSessionRequest({ title: undefined, status: "active" }), {
     status: "active"
   });
 });

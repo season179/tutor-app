@@ -76,31 +76,15 @@ export const tutorSessionDetailSchema = z.object({
 }) satisfies z.ZodType<TutorSessionDetail>;
 
 export function parseCreateTutorSessionRequest(value: unknown): CreateTutorSessionRequest {
-  const parsed = parseWithSchema(createTutorSessionRequestSchema, value, "Create session request");
-  return parsed.title === undefined ? {} : { title: parsed.title };
+  return omitUndefinedProperties(
+    parseWithSchema(createTutorSessionRequestSchema, value, "Create session request")
+  ) as CreateTutorSessionRequest;
 }
 
 export function parseUpdateTutorSessionRequest(value: unknown): UpdateTutorSessionRequest {
-  const parsed = parseWithSchema(updateTutorSessionRequestSchema, value, "Update session request");
-  const request: UpdateTutorSessionRequest = {};
-
-  if (parsed.title !== undefined) {
-    request.title = parsed.title;
-  }
-  if (parsed.status !== undefined) {
-    request.status = parsed.status;
-  }
-  if (parsed.imagePrompt !== undefined) {
-    request.imagePrompt = parsed.imagePrompt;
-  }
-  if (parsed.imageName !== undefined) {
-    request.imageName = parsed.imageName;
-  }
-  if (parsed.imageMeta !== undefined) {
-    request.imageMeta = parsed.imageMeta;
-  }
-
-  return request;
+  return omitUndefinedProperties(
+    parseWithSchema(updateTutorSessionRequestSchema, value, "Update session request")
+  ) as UpdateTutorSessionRequest;
 }
 
 export function parseAppendSessionEventRequest(value: unknown): AppendSessionEventRequest {
@@ -119,4 +103,8 @@ function parseWithSchema<T>(schema: z.ZodType<T>, value: unknown, label: string)
   }
 
   return result.data;
+}
+
+function omitUndefinedProperties<T extends object>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined)) as T;
 }
