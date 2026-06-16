@@ -71,8 +71,13 @@ export function App() {
   resetProblemImageRef.current = problemImage.resetProblemImage;
   onEventLoggedRef.current = tutorSessions.notifyEventLogged;
 
+  const activeSessionHasPriorActivity = hasPriorActivity(
+    tutorSessions.activeSession,
+    tutorSessions.eventCount
+  );
+
   const handleStart = () => {
-    const greet = !hasPriorActivity(tutorSessions.activeSession, tutorSessions.eventCount);
+    const greet = !activeSessionHasPriorActivity;
     startSession({ greet })
       .then(() => tutorSessions.refreshSessions())
       .catch((error: unknown) => {
@@ -113,7 +118,7 @@ export function App() {
         <div className="main-grid">
           <VoiceSessionPanel
             audioRef={audioRef}
-            hasPriorActivity={hasPriorActivity(tutorSessions.activeSession, tutorSessions.eventCount)}
+            hasPriorActivity={activeSessionHasPriorActivity}
             isRunning={isRunning}
             onStart={handleStart}
             onStop={stopSession}
