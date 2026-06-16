@@ -28,6 +28,15 @@ async function fetchJson<T>(input: string, init: RequestInit): Promise<T> {
   return readJson<T>(response);
 }
 
+function getJson<T>(input: string): Promise<T> {
+  return fetchJson<T>(input, {
+    headers: {
+      Accept: "application/json"
+    },
+    method: "GET"
+  });
+}
+
 function jsonBodyInit(method: "PATCH" | "POST", body: unknown): RequestInit {
   return {
     body: JSON.stringify(body),
@@ -39,12 +48,7 @@ function jsonBodyInit(method: "PATCH" | "POST", body: unknown): RequestInit {
 }
 
 export async function listSessions(): Promise<TutorSessionSummary[]> {
-  return fetchJson<TutorSessionSummary[]>(sessionsPath, {
-    headers: {
-      Accept: "application/json"
-    },
-    method: "GET"
-  });
+  return getJson<TutorSessionSummary[]>(sessionsPath);
 }
 
 export async function createSession(title?: string): Promise<TutorSessionRecord> {
@@ -52,12 +56,7 @@ export async function createSession(title?: string): Promise<TutorSessionRecord>
 }
 
 export async function getSession(sessionId: string): Promise<TutorSessionDetail> {
-  return fetchJson<TutorSessionDetail>(`${sessionsPath}/${sessionId}`, {
-    headers: {
-      Accept: "application/json"
-    },
-    method: "GET"
-  });
+  return getJson<TutorSessionDetail>(`${sessionsPath}/${sessionId}`);
 }
 
 export async function updateSession(
