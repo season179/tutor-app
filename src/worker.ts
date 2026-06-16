@@ -55,15 +55,14 @@ async function limitVoiceSessionRequest(env: Env, key: string): Promise<Response
 }
 
 function readCallerKey(request: Request): string {
-  const connectingIp = request.headers.get("CF-Connecting-IP")?.trim();
-  if (connectingIp) {
-    return `ip:${connectingIp}`;
-  }
+  return (
+    toIpCallerKey(request.headers.get("CF-Connecting-IP")) ??
+    toIpCallerKey(request.headers.get("X-Forwarded-For")?.split(",").at(0)) ??
+    "anonymous"
+  );
+}
 
-  const forwardedFor = request.headers.get("X-Forwarded-For")?.split(",").at(0)?.trim();
-  if (forwardedFor) {
-    return `ip:${forwardedFor}`;
-  }
-
-  return "anonymous";
+function toIpCallerKey(value: string | null | undefined): string | undefined {
+  const ip = value?.trim();
+  return ip ? `ip:${ip}` : undefined;
 }
