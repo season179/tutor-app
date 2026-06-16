@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { classNames } from "../lib/class-names.js";
+
 type PanelProps = {
   children: ReactNode;
   className?: string;
@@ -10,7 +12,7 @@ type PanelProps = {
 
 export function Panel({ children, className, description, id, title }: PanelProps) {
   return (
-    <section className={["panel", className].filter(Boolean).join(" ")} aria-labelledby={id}>
+    <section className={classNames("panel", className)} aria-labelledby={id}>
       <div className="panel-heading">
         <span className="panel-knot" aria-hidden="true" />
         <div>

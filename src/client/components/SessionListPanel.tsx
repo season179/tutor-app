@@ -1,6 +1,7 @@
 import type { TutorSessionStatus, TutorSessionSummary } from "../../session-types.js";
 import { ActionButton } from "./ActionButton.js";
 import { Panel } from "./Panel.js";
+import { classNames } from "../lib/class-names.js";
 import { formatRelativeTime } from "../lib/format-relative-time.js";
 import type { SessionListError } from "../types.js";
 import { statusLabel } from "../types.js";
@@ -99,7 +100,7 @@ export function SessionListPanel({
                 <li key={session.id}>
                   <button
                     aria-current={selected ? "true" : undefined}
-                    className={["session-row", selected ? "session-row--selected" : ""].filter(Boolean).join(" ")}
+                    className={classNames("session-row", selected && "session-row--selected")}
                     disabled={isDisabled}
                     onClick={() => onSelect(session.id)}
                     type="button"
