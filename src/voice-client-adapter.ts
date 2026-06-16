@@ -68,6 +68,10 @@ function createSessionConfig(session: OpenAIRealtimeSessionDescriptor): Partial<
   };
 }
 
+function throwLiveKitAgentsUnavailable(): never {
+  throw new Error("LiveKit Agents browser adapter is not implemented in this foundation pass.");
+}
+
 abstract class BaseVoiceClientAdapter implements VoiceClientAdapter {
   private readonly eventHandlers = new Set<VoiceClientEventHandler>();
 
@@ -244,7 +248,7 @@ class OpenAIRealtimeClientAdapter extends BaseVoiceClientAdapter {
 
 class LiveKitAgentsClientAdapter extends BaseVoiceClientAdapter {
   connect(): Promise<void> {
-    throw new Error("LiveKit Agents browser adapter is not implemented in this foundation pass.");
+    throwLiveKitAgentsUnavailable();
   }
 
   disconnect(): void {
@@ -256,10 +260,10 @@ class LiveKitAgentsClientAdapter extends BaseVoiceClientAdapter {
   }
 
   requestReply(): void {
-    throw new Error("LiveKit Agents browser adapter is not implemented in this foundation pass.");
+    throwLiveKitAgentsUnavailable();
   }
 
   sendUserTurn(): void {
-    throw new Error("LiveKit Agents browser adapter is not implemented in this foundation pass.");
+    throwLiveKitAgentsUnavailable();
   }
 }
