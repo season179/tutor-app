@@ -9,4 +9,5 @@ public/client.js.map
 !.dev.vars.example
 .wrangler/
 worker-startup.cpuprofile
+codedb.snapshot
 .DS_Store
