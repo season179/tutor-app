@@ -18,7 +18,7 @@
     "OPENAI_REALTIME_MODEL": "gpt-realtime-2",
     "OPENAI_REALTIME_VOICE": "marin",
     "OPENAI_SAFETY_IDENTIFIER": "cloudflare-ai-tutor-user",
-    "BETTER_AUTH_URL": "https://ai-tutor.local"
+    "BETTER_AUTH_URL": "https://ai-tutor.dev"
   },
   "d1_databases": [
     {
