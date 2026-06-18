@@ -9,11 +9,13 @@ type SidebarProps = {
   activeSessionId: string | undefined;
   collapsed: boolean;
   error: SessionListError | null;
+  isAnonymous?: boolean;
   isDisabled?: boolean;
   isLoading: boolean;
   onCreate: () => void;
   onRetry: () => void;
   onSelect: (sessionId: string) => void;
+  onSignIn?: () => void;
   onSignOut: () => void;
   onToggleCollapsed: () => void;
   sessions: TutorSessionSummary[];
@@ -44,11 +46,13 @@ export function Sidebar({
   activeSessionId,
   collapsed,
   error,
+  isAnonymous = false,
   isDisabled = false,
   isLoading,
   onCreate,
   onRetry,
   onSelect,
+  onSignIn,
   onSignOut,
   onToggleCollapsed,
   sessions,
@@ -90,6 +94,10 @@ export function Sidebar({
           {collapsed ? <PlusIcon /> : "New session"}
         </ActionButton>
       </div>
+
+      {isAnonymous && !collapsed ? (
+        <p className="sidebar-guest-hint">Guest mode — sign in to keep all sessions.</p>
+      ) : null}
 
       {error ? (
         <div className="sidebar-alert" role="alert">
@@ -165,7 +173,23 @@ export function Sidebar({
       ) : null}
 
       <div className="sidebar-footer">
-        {collapsed ? (
+        {isAnonymous ? (
+          collapsed ? (
+            <button
+              aria-label="Sign in with Google"
+              className="icon-button sidebar-signin"
+              onClick={() => onSignIn?.()}
+              title="Sign in with Google"
+              type="button"
+            >
+              <SignInIcon />
+            </button>
+          ) : (
+            <ActionButton className="sidebar-signin-action" onClick={() => onSignIn?.()} variant="secondary">
+              Sign in with Google
+            </ActionButton>
+          )
+        ) : collapsed ? (
           <button
             aria-label="Sign out"
             className="icon-button sidebar-signout"
@@ -235,6 +259,24 @@ function RetryIcon() {
     >
       <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
       <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+
+function SignInIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.8"
+      viewBox="0 0 24 24"
+    >
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <path d="M10 17l5-5-5-5" />
+      <path d="M15 12H3" />
     </svg>
   );
 }

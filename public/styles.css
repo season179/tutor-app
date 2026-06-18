@@ -353,6 +353,14 @@ p {
   margin: 0;
 }
 
+.sidebar-guest-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin: 0;
+  padding: 0 0.7rem 0.55rem;
+}
+
 .sidebar-new-action {
   inline-size: 100%;
 }
@@ -942,6 +950,14 @@ pre {
 .sidebar-signout,
 .sidebar-signout-link {
   color: var(--muted);
+}
+
+.sidebar-signin-action {
+  inline-size: 100%;
+}
+
+.sidebar-signin:not(:disabled):hover {
+  color: var(--ink);
 }
 
 .sidebar-signout:not(:disabled):hover,

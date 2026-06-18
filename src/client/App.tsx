@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 
 import { BrandLockup } from "./components/BrandLockup.js";
 import { EventLogPanel } from "./components/EventLogPanel.js";
@@ -18,7 +18,8 @@ import type { LoadedSessionContext, StatusTone } from "./types.js";
 import { hasPriorActivity } from "./types.js";
 
 export function App() {
-  const { isAuthLoading, signInWithGoogle, signOut, user } = useAuth();
+  const { authError, isAnonymous, isAuthLoading, signInWithGoogle, signOut, userEmail, userId } =
+    useAuth();
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const activeSessionIdRef = useRef<string | undefined>(undefined);
@@ -41,10 +42,23 @@ export function App() {
     logEvent,
     resetProblemImage: () => resetProblemImageRef.current(),
     setStatus: (message, tone) => setStatusRef.current(message, tone),
-    stopVoiceSession: () => stopVoiceSessionRef.current()
+    stopVoiceSession: () => stopVoiceSessionRef.current(),
+    userId
   });
 
   activeSessionIdRef.current = tutorSessions.activeSessionId;
+
+  const visibleSessions = useMemo(() => {
+    if (!isAnonymous) {
+      return tutorSessions.sessions;
+    }
+
+    if (!tutorSessions.activeSessionId) {
+      return [];
+    }
+
+    return tutorSessions.sessions.filter((session) => session.id === tutorSessions.activeSessionId);
+  }, [isAnonymous, tutorSessions.activeSessionId, tutorSessions.sessions]);
 
   const {
     ensureSessionReadyForImage,
@@ -105,11 +119,18 @@ export function App() {
     return <main className="workspace" aria-busy="true" />;
   }
 
-  if (!user) {
-    return <SignInScreen onSignIn={signInWithGoogle} />;
+  if (authError) {
+    return (
+      <SignInScreen
+        message="Could not start a guest session. Sign in with Google to continue."
+        onSignIn={signInWithGoogle}
+      />
+    );
   }
 
-  const userEmail = user.email;
+  if (!userId) {
+    return <main className="workspace" aria-busy="true" />;
+  }
 
   return (
     <main className="workspace">
@@ -117,8 +138,9 @@ export function App() {
         activeSessionId={tutorSessions.activeSessionId}
         collapsed={sidebarCollapsed}
         error={tutorSessions.listError}
+        isAnonymous={isAnonymous}
         isDisabled={tutorSessions.isSwitching || isRunning}
-        isLoading={tutorSessions.isLoading}
+        isLoading={tutorSessions.isLoading || tutorSessions.isHydrating}
         onCreate={() => {
           void tutorSessions.createNewSession();
         }}
@@ -128,9 +150,10 @@ export function App() {
         onSelect={(sessionId) => {
           void tutorSessions.selectSession(sessionId);
         }}
+        onSignIn={signInWithGoogle}
         onSignOut={signOut}
         onToggleCollapsed={toggleSidebarCollapsed}
-        sessions={tutorSessions.sessions}
+        sessions={visibleSessions}
         {...(userEmail ? { userEmail } : {})}
       />
 

@@ -157,6 +157,21 @@ export class MemorySessionStore implements SessionStore {
     return Boolean(this.getOwnedSession(ownerKey, sessionId));
   }
 
+  async transferOwnerSessions(fromOwnerKey: string, toOwnerKey: string): Promise<number> {
+    let transferred = 0;
+
+    for (const session of this.sessions.values()) {
+      if (session.ownerKey !== fromOwnerKey) {
+        continue;
+      }
+
+      session.ownerKey = toOwnerKey;
+      transferred += 1;
+    }
+
+    return transferred;
+  }
+
   async updateSession(
     ownerKey: string,
     sessionId: string,

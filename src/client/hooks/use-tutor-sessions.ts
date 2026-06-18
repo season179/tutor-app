@@ -15,7 +15,10 @@ import {
   updateSession
 } from "../lib/session-api.js";
 import type { LoadedSessionContext, SessionListError, StatusTone } from "../types.js";
-import { activeSessionStorageKey } from "../types.js";
+import {
+  activeSessionStorageKey,
+  legacyActiveSessionStorageKey
+} from "../types.js";
 
 type UseTutorSessionsOptions = {
   clearEventLog: () => void;
@@ -26,6 +29,7 @@ type UseTutorSessionsOptions = {
   resetProblemImage: () => void;
   setStatus: (message: string, tone?: StatusTone) => void;
   stopVoiceSession: () => void;
+  userId: string | undefined;
 };
 
 function toSessionListError(error: unknown): SessionListError {
@@ -59,25 +63,36 @@ function toLoadedSessionContext(
   };
 }
 
-function readStoredActiveSessionId(): string | undefined {
+function removeLegacyActiveSessionStorageKey(): void {
   if (typeof sessionStorage === "undefined") {
+    return;
+  }
+
+  sessionStorage.removeItem(legacyActiveSessionStorageKey);
+}
+
+function readStoredActiveSessionId(userId: string | undefined): string | undefined {
+  if (!userId || typeof sessionStorage === "undefined") {
     return undefined;
   }
 
-  return sessionStorage.getItem(activeSessionStorageKey) ?? undefined;
+  removeLegacyActiveSessionStorageKey();
+  return sessionStorage.getItem(activeSessionStorageKey(userId)) ?? undefined;
 }
 
-function writeStoredActiveSessionId(sessionId: string | undefined): void {
-  if (typeof sessionStorage === "undefined") {
+function writeStoredActiveSessionId(userId: string | undefined, sessionId: string | undefined): void {
+  if (!userId || typeof sessionStorage === "undefined") {
     return;
   }
+
+  const key = activeSessionStorageKey(userId);
 
   if (sessionId) {
-    sessionStorage.setItem(activeSessionStorageKey, sessionId);
+    sessionStorage.setItem(key, sessionId);
     return;
   }
 
-  sessionStorage.removeItem(activeSessionStorageKey);
+  sessionStorage.removeItem(key);
 }
 
 export function useTutorSessions({
@@ -88,7 +103,8 @@ export function useTutorSessions({
   logEvent,
   resetProblemImage,
   setStatus,
-  stopVoiceSession
+  stopVoiceSession,
+  userId
 }: UseTutorSessionsOptions): {
   activeSession: TutorSessionSummary | undefined;
   activeSessionId: string | undefined;
@@ -105,18 +121,22 @@ export function useTutorSessions({
   notifyEventLogged: () => void;
 } {
   const [sessions, setSessions] = useState<TutorSessionSummary[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | undefined>(readStoredActiveSessionId);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isHydrating, setIsHydrating] = useState(true);
+  const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isHydrating, setIsHydrating] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const [listError, setListError] = useState<SessionListError | null>(null);
   const [eventCount, setEventCount] = useState(0);
-  const initializedRef = useRef(false);
+  const initializedForUserIdRef = useRef<string | undefined>(undefined);
+  const initGenerationRef = useRef(0);
 
-  const persistActiveSessionId = useCallback((sessionId: string | undefined) => {
-    setActiveSessionId(sessionId);
-    writeStoredActiveSessionId(sessionId);
-  }, []);
+  const persistActiveSessionId = useCallback(
+    (sessionId: string | undefined) => {
+      setActiveSessionId(sessionId);
+      writeStoredActiveSessionId(userId, sessionId);
+    },
+    [userId]
+  );
 
   const notifyEventLogged = useCallback(() => {
     setEventCount((previous) => previous + 1);
@@ -242,38 +262,87 @@ export function useTutorSessions({
   );
 
   useEffect(() => {
-    if (initializedRef.current) {
+    if (!userId) {
+      initializedForUserIdRef.current = undefined;
+      setSessions([]);
+      setActiveSessionId(undefined);
+      setIsLoading(false);
+      setIsHydrating(false);
+      setListError(null);
+      setEventCount(0);
       return;
     }
 
-    initializedRef.current = true;
+    if (initializedForUserIdRef.current === userId) {
+      return;
+    }
+
+    initializedForUserIdRef.current = userId;
+    const storedId = readStoredActiveSessionId(userId);
+    const initGeneration = ++initGenerationRef.current;
+    setActiveSessionId(storedId);
+    setSessions([]);
+    setListError(null);
+    setEventCount(0);
 
     void (async () => {
       setIsHydrating(true);
+      setIsLoading(true);
 
       try {
         const nextSessions = await refreshSessions();
-
-        if (nextSessions.length === 0) {
-          await createNewSession();
+        if (initGeneration !== initGenerationRef.current) {
           return;
         }
 
-        const storedId = readStoredActiveSessionId();
+        if (nextSessions.length === 0) {
+          const created = await createSession();
+          if (initGeneration !== initGenerationRef.current) {
+            return;
+          }
+
+          clearEventLog();
+          resetProblemImage();
+          loadSessionContext(toLoadedSessionContext(created));
+          setEventCount(0);
+          setSessions([created]);
+          persistActiveSessionId(created.id);
+          setStatus("New session ready.", "ready");
+          logEvent("Session created", { sessionId: created.id, title: created.title }, created.id);
+          return;
+        }
+
         const targetId =
           storedId && nextSessions.some((session) => session.id === storedId)
             ? storedId
             : nextSessions[0]!.id;
 
         await hydrateSession(targetId);
+        if (initGeneration !== initGenerationRef.current) {
+          return;
+        }
+
         persistActiveSessionId(targetId);
       } catch {
         // Errors are surfaced through listError and status.
       } finally {
-        setIsHydrating(false);
+        if (initGeneration === initGenerationRef.current) {
+          setIsHydrating(false);
+          setIsLoading(false);
+        }
       }
     })();
-  }, [createNewSession, hydrateSession, persistActiveSessionId, refreshSessions]);
+  }, [
+    clearEventLog,
+    hydrateSession,
+    loadSessionContext,
+    logEvent,
+    persistActiveSessionId,
+    refreshSessions,
+    resetProblemImage,
+    setStatus,
+    userId
+  ]);
 
   const activeSession = sessions.find((session) => session.id === activeSessionId);
 

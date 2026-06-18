@@ -6,6 +6,7 @@
 // `dist/` — e.g. `MemorySessionStore` and `handleVoicePipelineTurnWithStore`.
 // It is not the dev server. To run the app locally use `pnpm dev`.
 
+export { transferSessionsOnLink } from "./auth.js";
 export { MemorySessionStore } from "./memory-session-store.js";
 export { defaultRealtimeModel, defaultRealtimeVoice } from "./realtime-token.js";
 export { defaultVoiceBackend } from "./voice-session-service.js";

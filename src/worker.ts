@@ -1,4 +1,4 @@
-import { createAuth, authPathPrefix } from "./auth.js";
+import { createAuth, authPathPrefix, type AuthEnv } from "./auth.js";
 import { createApiHandlerEnv, handleApiRequest } from "./api-handler.js";
 import { D1SessionStore } from "./d1-session-store.js";
 import { voiceSessionPath, voiceTurnPath } from "./voice-types.js";
@@ -6,11 +6,12 @@ import { voiceSessionPath, voiceTurnPath } from "./voice-types.js";
 export default {
   async fetch(request, env): Promise<Response> {
     const url = new URL(request.url);
+    const store = new D1SessionStore(env.DB);
+    const auth = createWorkerAuth(env, store);
 
     // better-auth handles its own routes (sign-in, callback, sign-out, session).
     // These must run before the ownership-gated API handler.
     if (url.pathname.startsWith(authPathPrefix)) {
-      const auth = createAuth(env);
       return auth.handler(request);
     }
 
@@ -21,8 +22,6 @@ export default {
       }
     }
 
-    const store = new D1SessionStore(env.DB);
-    const auth = createAuth(env);
     const apiResponse = await handleApiRequest(request, createApiHandlerEnv(env), {
       auth,
       store
@@ -35,6 +34,14 @@ export default {
     return env.ASSETS.fetch(request);
   }
 } satisfies ExportedHandler<Env>;
+
+function createWorkerAuth(env: AuthEnv, store: D1SessionStore) {
+  return createAuth(env, {
+    transferSessions: async (fromUserId, toUserId) => {
+      await store.transferOwnerSessions(fromUserId, toUserId);
+    }
+  });
+}
 
 async function limitVoiceSessionRequest(env: Env, key: string): Promise<Response | undefined> {
   const limiter = env.REALTIME_TOKEN_RATE_LIMITER;

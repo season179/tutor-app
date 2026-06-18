@@ -143,6 +143,15 @@ export class D1SessionStore implements SessionStore {
     return Boolean(row);
   }
 
+  async transferOwnerSessions(fromOwnerKey: string, toOwnerKey: string): Promise<number> {
+    const result = await this.db
+      .prepare("UPDATE tutor_sessions SET owner_key = ? WHERE owner_key = ?")
+      .bind(toOwnerKey, fromOwnerKey)
+      .run();
+
+    return result.meta.changes ?? 0;
+  }
+
   async updateSession(
     ownerKey: string,
     sessionId: string,

@@ -44,7 +44,14 @@ export function hasPriorActivity(session: TutorSessionSummary | undefined, event
   return Boolean(session && (eventCount > 0 || session.status !== "draft"));
 }
 
-export const activeSessionStorageKey = "ai-tutor.active-session-id";
+export const activeSessionStorageKeyPrefix = "ai-tutor.active-session-id";
+
+/** Legacy unscoped key; removed on first read after user-scoped storage ships. */
+export const legacyActiveSessionStorageKey = "ai-tutor.active-session-id";
+
+export function activeSessionStorageKey(userId: string): string {
+  return `${activeSessionStorageKeyPrefix}:${userId}`;
+}
 
 export const sidebarCollapsedStorageKey = "ai-tutor.sidebar-collapsed";
 

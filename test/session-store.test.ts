@@ -57,6 +57,34 @@ test("MemorySessionStore updates image metadata without storing data URLs", asyn
   assert.equal(updated?.imagePrompt, "Walk me through this problem.");
 });
 
+test("MemorySessionStore transferOwnerSessions moves sessions and preserves events", async () => {
+  const store = new MemorySessionStore();
+  const ownerA = "user-a";
+  const ownerB = "user-b";
+  const otherOwner = "user-c";
+
+  const sessionA1 = await store.createSession(ownerA, { title: "Session A1" });
+  const sessionA2 = await store.createSession(ownerA, { title: "Session A2" });
+  const sessionC = await store.createSession(otherOwner, { title: "Session C" });
+
+  await store.appendEvent(ownerA, sessionA1.id, { message: "Event A1" });
+  await store.appendEvent(ownerA, sessionA2.id, { message: "Event A2" });
+
+  const transferred = await store.transferOwnerSessions(ownerA, ownerB);
+
+  assert.equal(transferred, 2);
+  assert.equal((await store.listSessions(ownerA)).length, 0);
+  assert.deepEqual(
+    (await store.listSessions(ownerB)).map((session) => session.id).sort(),
+    [sessionA1.id, sessionA2.id].sort()
+  );
+  assert.equal((await store.listSessions(otherOwner))[0]?.id, sessionC.id);
+
+  const detail = await store.getSession(ownerB, sessionA1.id);
+  assert.ok(detail);
+  assert.equal(detail.events[0]?.message, "Event A1");
+});
+
 test("mapD1SessionRow normalizes optional image columns", () => {
   const session = mapD1SessionRow({
     created_at: "2026-06-17T01:02:03.000Z",

@@ -14,6 +14,7 @@ export type SessionStore = {
   getSession(ownerKey: string, sessionId: string): Promise<TutorSessionDetail | null>;
   listSessions(ownerKey: string): Promise<TutorSessionSummary[]>;
   sessionExists(ownerKey: string, sessionId: string): Promise<boolean>;
+  transferOwnerSessions(fromOwnerKey: string, toOwnerKey: string): Promise<number>;
   updateSession(
     ownerKey: string,
     sessionId: string,
