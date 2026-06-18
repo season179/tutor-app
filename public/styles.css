@@ -22,6 +22,7 @@
   --focus: oklch(0.82 0.083 148);
   --danger: oklch(0.42 0.069 32);
   --danger-soft: oklch(0.78 0.031 42);
+  --success: oklch(0.45 0.12 150);
   --log-bg: oklch(0.96 0.01 146);
   --log-ink: var(--ink);
   --shadow: oklch(0.22 0.035 158 / 0.07);
@@ -35,6 +36,19 @@
 
 * {
   box-sizing: border-box;
+}
+
+.sr-only {
+  block-size: 1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  inline-size: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  word-wrap: normal;
 }
 
 ::selection {
@@ -433,7 +447,20 @@ p {
 }
 
 .panel-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
   margin-bottom: 1rem;
+}
+
+.panel-heading-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-heading-actions {
+  flex: 0 0 auto;
 }
 
 .panel-heading h2 {
@@ -636,23 +663,44 @@ p {
   background: var(--surface-rest);
 }
 
-.log-actions {
+.icon-button {
   align-items: center;
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  min-height: 2.5rem;
-}
-
-.copy-log-action {
-  min-height: 2.45rem;
-  padding: 0.55rem 0.8rem;
-}
-
-.copy-log-status {
+  background: transparent;
+  block-size: 2rem;
+  border-radius: 8px;
   color: var(--muted);
-  font-size: 0.84rem;
-  min-width: 5.5rem;
+  display: inline-flex;
+  inline-size: 2rem;
+  justify-content: center;
+  min-height: 0;
+  padding: 0;
+}
+
+.icon-button svg {
+  block-size: 1.1rem;
+  inline-size: 1.1rem;
+}
+
+.icon-button:not(:disabled):hover {
+  background: var(--quiet-button);
+  color: var(--ink);
+  transform: none;
+}
+
+.copy-log-icon-copied {
+  color: var(--success);
+}
+
+.copy-log-icon-copied:not(:disabled):hover {
+  color: var(--success);
+}
+
+.copy-log-icon-error {
+  color: var(--danger);
+}
+
+.copy-log-icon-error:not(:disabled):hover {
+  color: var(--danger);
 }
 
 pre {

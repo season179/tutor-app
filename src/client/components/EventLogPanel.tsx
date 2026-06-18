@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { ActionButton } from "./ActionButton.js";
+import { classNames } from "../lib/class-names.js";
 import { Panel } from "./Panel.js";
 
 type EventLogPanelProps = {
@@ -22,23 +22,58 @@ export function EventLogPanel({ logText }: EventLogPanelProps) {
       });
   };
 
+  const label =
+    copyStatus === "copied" ? "Copied" : copyStatus === "error" ? "Copy failed" : "Copy logs";
+  const statusText = copyStatus === "copied" ? "Copied" : copyStatus === "error" ? "Copy failed" : "";
+
   return (
     <Panel
+      actions={
+        <button
+          aria-label={label}
+          className={classNames("icon-button", "copy-log-icon", `copy-log-icon-${copyStatus}`)}
+          onClick={handleCopy}
+          title={label}
+          type="button"
+        >
+          <CopyIcon status={copyStatus} />
+        </button>
+      }
       className="events-panel"
       description="Connection, image, and voice events."
       id="events-title"
       title="Session log"
     >
-      <div className="log-actions">
-        <ActionButton className="copy-log-action" onClick={handleCopy} variant="secondary">
-          Copy logs
-        </ActionButton>
-        <span className="copy-log-status" role="status">
-          {copyStatus === "copied" ? "Copied" : copyStatus === "error" ? "Copy failed" : ""}
-        </span>
-      </div>
+      <span className="sr-only" role="status">
+        {statusText}
+      </span>
       <pre aria-live="polite">{logText}</pre>
     </Panel>
+  );
+}
+
+function CopyIcon({ status }: { status: "copied" | "error" | "idle" }) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.8"
+      viewBox="0 0 24 24"
+    >
+      {status === "copied" ? (
+        <path d="M5 13l4 4L19 7" />
+      ) : status === "error" ? (
+        <path d="M6 6l12 12M18 6L6 18" />
+      ) : (
+        <>
+          <rect height="9" rx="2" width="9" x="9" y="9" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </>
+      )}
+    </svg>
   );
 }
 
