@@ -9,7 +9,7 @@ Small TypeScript AI tutor app for turn-controlled voice tutoring. A student shar
 - An OpenAI API key
 - Google OAuth credentials (for sign-in)
 
-This repo pins `pnpm@11.6.0` in `package.json` and includes `.node-version` / `.nvmrc` with Node 24.
+This repo pins `pnpm@11.6.0` in `package.json` and includes `.node-version` / `.nvmrc` with Node 24. Local dev runs behind [Portless](https://portless.sh), which gives the app a stable `https://ai-tutor.dev` URL.
 
 ## Setup
 
@@ -20,7 +20,12 @@ pnpm install
 cp .dev.vars.example .dev.vars
 ```
 
-Set `OPENAI_API_KEY` and the better-auth / Google OAuth values in `.dev.vars` (see [Authentication](#authentication)).
+Set `OPENAI_API_KEY` and the better-auth / Google OAuth values in `.dev.vars` (see [Authentication](#authentication)). Then do the one-time Portless setup:
+
+```bash
+pnpm portless proxy start --tld dev   # set + persist the .dev TLD
+pnpm portless trust                    # trust the local CA (for HTTPS)
+```
 
 ## Authentication
 
@@ -32,7 +37,7 @@ Create a Google OAuth client at <https://console.cloud.google.com/apis/credentia
 - `BETTER_AUTH_SECRET` — generate with `openssl rand -base64 32`
 - `BETTER_AUTH_URL` — public base URL of the deployment
 
-Authorized redirect URI: `https://<your-domain>/api/auth/callback/google`
+Authorized redirect URI: `https://<your-domain>/api/auth/callback/google` — use `https://ai-tutor.dev/api/auth/callback/google` for local dev, and your production domain for deploy.
 
 For production, set the secrets with:
 
@@ -49,13 +54,13 @@ pnpm wrangler secret put GOOGLE_CLIENT_SECRET
 pnpm dev
 ```
 
-This builds the client and runs `wrangler dev` with a local D1 database, so better-auth has a real store in dev. Apply the database schema locally with:
+This builds the client and runs `wrangler dev` (local D1) behind Portless, so better-auth has a real store in dev. Open `https://ai-tutor.dev`, sign in with Google, choose a problem image, wait for it to be prepared, and click **Ask about image**. The tutor will speak one short next step. Use **Record answer** after each prompt, then **Stop and send** to let the tutor check that answer before moving on.
+
+Apply the database schema locally with:
 
 ```bash
 pnpm db:migrate
 ```
-
-Open the printed URL (usually `http://localhost:8787`), sign in with Google, choose a problem image, wait for it to be prepared, and click **Ask about image**. The tutor will speak one short next step. Use **Record answer** after each prompt, then **Stop and send** to let the tutor check that answer before moving on.
 
 ## How it works
 
@@ -88,7 +93,8 @@ pnpm deploy
 ## Scripts
 
 ```bash
-pnpm dev            # build client + wrangler dev (local D1)
+pnpm dev            # build client + wrangler dev (local D1) behind Portless → https://ai-tutor.dev
+pnpm dev:worker     # wrangler dev directly on http://localhost:8787 (no Portless)
 pnpm db:migrate     # apply D1 migrations locally
 pnpm db:migrate:remote
 pnpm check:worker-types

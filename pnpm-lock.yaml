@@ -39,6 +39,9 @@ importers:
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
+      portless:
+        specifier: 0.14.0
+        version: 0.14.0
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -1133,6 +1136,12 @@ packages:
   pkce-challenge@5.0.1:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
+
+  portless@0.14.0:
+    resolution: {integrity: sha512-kKxmxB1DQ9gI8t+V13VhuwTXu31io5nbFubvZAE82AxzXBsvcJV7qQJbmomrQUpbVxo2UVHqs14iX4YK0BClmQ==}
+    engines: {node: '>=24'}
+    os: [darwin, linux, win32]
+    hasBin: true
 
   proxy-addr@2.0.7:
     resolution: {integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==}
@@ -2239,6 +2248,8 @@ snapshots:
 
   pkce-challenge@5.0.1:
     optional: true
+
+  portless@0.14.0: {}
 
   proxy-addr@2.0.7:
     dependencies:

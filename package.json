@@ -14,11 +14,17 @@
     "check:worker-types": "wrangler types --check",
     "deploy": "pnpm build && wrangler deploy",
     "deploy:dry-run": "pnpm build && wrangler deploy --dry-run",
-    "dev": "pnpm build:client && wrangler dev",
+    "dev": "portless",
+    "dev:worker": "pnpm build:client && wrangler dev",
     "db:migrate": "wrangler d1 migrations apply ai-tutor-sessions --local",
     "db:migrate:remote": "wrangler d1 migrations apply ai-tutor-sessions --remote",
     "typecheck": "pnpm check:worker-types && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.worker.json && pnpm test",
     "test": "tsc -p tsconfig.server.json && node --experimental-strip-types --test test/**/*.test.ts"
+  },
+  "portless": {
+    "name": "ai-tutor",
+    "script": "dev:worker",
+    "appPort": 8787
   },
   "dependencies": {
     "@openai/agents": "^0.11.6",
@@ -33,6 +39,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "esbuild": "^0.28.1",
+    "portless": "0.14.0",
     "typescript": "^5.9.3",
     "wrangler": "^4.100.0"
   }

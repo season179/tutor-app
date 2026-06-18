@@ -1,13 +1,20 @@
 # Used by `wrangler dev` (local development). Copy to `.dev.vars`.
+#
+# `pnpm dev` runs the app behind Portless at https://ai-tutor.dev (proxying to
+# the wrangler dev server on port 8787). One-time setup:
+#   1. pnpm portless proxy start --tld dev     # sets + persists the .dev TLD
+#   2. pnpm portless trust                      # trust the local CA (HTTPS)
+# The .dev TLD is shared across all Portless apps and persists across restarts.
+
 OPENAI_API_KEY=your-openai-api-key
 
 # better-auth (generate a secret: `openssl rand -base64 32`)
 BETTER_AUTH_SECRET=your-better-auth-secret
-# Public base URL of the app. In local dev this is usually http://localhost:8787
-BETTER_AUTH_URL=http://localhost:8787
+# Public base URL of the app. Local dev runs behind Portless at:
+BETTER_AUTH_URL=https://ai-tutor.dev
 
 # Google OAuth. Create a project at https://console.cloud.google.com/apis/credentials
-# Authorized redirect URI for local dev: http://localhost:8787/api/auth/callback/google
+# Authorized redirect URI for local dev: https://ai-tutor.dev/api/auth/callback/google
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
