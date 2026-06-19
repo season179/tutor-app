@@ -67,10 +67,16 @@ export async function extractProblemQuestion(
   sessionId: string,
   objectKey: string
 ): Promise<ExtractQuestionResponse> {
-  const response = await fetch(
-    problemContextExtractQuestionPath,
-    jsonRequestInit("POST", { objectKey, sessionId })
-  );
+  let response: Response;
+
+  try {
+    response = await fetch(
+      problemContextExtractQuestionPath,
+      jsonRequestInit("POST", { objectKey, sessionId })
+    );
+  } catch (error) {
+    throw new Error("Could not reach the app server. Try restarting `pnpm dev`.", { cause: error });
+  }
 
   return readJsonResponse<ExtractQuestionResponse>(
     response,

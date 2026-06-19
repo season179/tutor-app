@@ -4,6 +4,8 @@ export const maxSessionEvents = 200;
 
 export type TutorSessionStatus = "draft" | "active" | "ended";
 
+import type { ExtractionOutcome } from "./problem-context/problem-context-types.js";
+
 export type SessionImageMeta = {
   bytes: number;
   height: number;
@@ -19,11 +21,14 @@ export type TutorSessionSummary = {
 };
 
 export type TutorSessionRecord = TutorSessionSummary & {
+  extractionNotes: string | null;
+  extractionOutcome: ExtractionOutcome | null;
   imageMeta: SessionImageMeta | null;
   imageName: string | null;
   imageObjectKey: string | null;
   imagePrompt: string | null;
   ownerKey: string;
+  promptConfirmed: boolean;
 };
 
 export type SessionEventRecord = {
@@ -44,10 +49,13 @@ export type CreateTutorSessionRequest = {
 };
 
 export type UpdateTutorSessionRequest = {
+  extractionNotes?: string | null;
+  extractionOutcome?: ExtractionOutcome | null;
   imageMeta?: SessionImageMeta | null;
   imageName?: string | null;
   imageObjectKey?: string | null;
   imagePrompt?: string | null;
+  promptConfirmed?: boolean;
   status?: TutorSessionStatus;
   title?: string;
 };
@@ -78,10 +86,13 @@ export function applyTutorSessionUpdate(
 ): TutorSessionRecord {
   return {
     ...session,
+    extractionNotes: updateValue(request.extractionNotes, session.extractionNotes),
+    extractionOutcome: updateValue(request.extractionOutcome, session.extractionOutcome),
     imageMeta: updateValue(request.imageMeta, session.imageMeta),
     imageName: updateValue(request.imageName, session.imageName),
     imageObjectKey: updateValue(request.imageObjectKey, session.imageObjectKey),
     imagePrompt: updateValue(request.imagePrompt, session.imagePrompt),
+    promptConfirmed: updateValue(request.promptConfirmed, session.promptConfirmed),
     status: updateValue(request.status, session.status),
     title: updateValue(request.title?.trim(), session.title),
     updatedAt

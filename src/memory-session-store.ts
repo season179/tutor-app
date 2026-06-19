@@ -9,6 +9,7 @@ import type {
   TutorSessionSummary,
   UpdateTutorSessionRequest
 } from "./session-types.js";
+import type { ExtractionOutcome } from "./problem-context/problem-context-types.js";
 import { isJsonObject } from "./schema-parser.js";
 import { applyTutorSessionUpdate, maxSessionEvents, toTutorSessionSummary } from "./session-types.js";
 import { sessionStoreNotFoundError, type SessionStore } from "./session-store.js";
@@ -47,6 +48,20 @@ function parseJsonOrNull(value: string | null): unknown {
   }
 }
 
+function parseExtractionOutcome(value: string | null): ExtractionOutcome | null {
+  if (
+    value === "extracted" ||
+    value === "multiple_questions" ||
+    value === "none" ||
+    value === "not_a_problem" ||
+    value === "partial"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
 function parseImageMeta(value: string | null): SessionImageMeta | null {
   const parsed = parseJsonOrNull(value);
   if (!isJsonObject(parsed)) {
@@ -77,12 +92,15 @@ function createTutorSessionRecord(
 ): TutorSessionRecord {
   return {
     createdAt,
+    extractionNotes: null,
+    extractionOutcome: null,
     id,
     imageMeta: null,
     imageName: null,
     imageObjectKey: null,
     imagePrompt: null,
     ownerKey,
+    promptConfirmed: false,
     status: "draft",
     title: request.title?.trim() || defaultTitle(createdAt),
     updatedAt: createdAt
@@ -209,12 +227,15 @@ export class MemorySessionStore implements SessionStore {
 export function mapD1SessionRow(row: Record<string, unknown>): TutorSessionRecord {
   return {
     createdAt: String(row.created_at),
+    extractionNotes: rowStringOrNull(row.extraction_notes),
+    extractionOutcome: parseExtractionOutcome(rowStringOrNull(row.extraction_outcome)),
     id: String(row.id),
     imageMeta: parseImageMeta(rowStringOrNull(row.image_meta_json)),
     imageName: rowStringOrNull(row.image_name),
     imageObjectKey: rowStringOrNull(row.image_object_key),
     imagePrompt: rowStringOrNull(row.image_prompt),
     ownerKey: String(row.owner_key),
+    promptConfirmed: Number(row.prompt_confirmed ?? 0) === 1,
     status: row.status as TutorSessionStatus,
     title: String(row.title),
     updatedAt: String(row.updated_at)

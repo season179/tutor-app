@@ -67,16 +67,22 @@ export async function handleExtractQuestionRequest(
   const extraction = await extractQuestionFromImageUrl(readUrl.url, env);
 
   await store.updateSession(context.ownerKey, request.sessionId, {
+    extractionNotes: extraction.notes,
+    extractionOutcome: extraction.outcome,
     imageObjectKey: request.objectKey,
-    imagePrompt: extraction.question || null
+    imagePrompt: extraction.question || null,
+    promptConfirmed: false
   });
 
   await store.appendEvent(context.ownerKey, request.sessionId, {
     message: "Question extracted",
     value: {
       confidence: extraction.confidence,
+      notes: extraction.notes,
       objectKey: request.objectKey,
-      questionLength: extraction.question.length
+      outcome: extraction.outcome,
+      questionLength: extraction.question.length,
+      requiresConfirmation: extraction.requiresConfirmation
     }
   });
 

@@ -84,9 +84,15 @@ export function App() {
   setStatusRef.current = setStatus;
   stopVoiceSessionRef.current = stopSession;
 
+  const sessionReady =
+    Boolean(tutorSessions.activeSessionId) &&
+    !tutorSessions.isSwitching &&
+    !tutorSessions.isHydrating;
+
   const problemContextStep1 = useProblemContextStep1({
     activeSessionId: tutorSessions.activeSessionId,
     logEvent,
+    sessionReady,
     setStatus
   });
 
@@ -120,11 +126,6 @@ export function App() {
         setStatus(errorMessage(error, "Unexpected error."), "error");
       });
   };
-
-  const sessionReady =
-    Boolean(tutorSessions.activeSessionId) &&
-    !tutorSessions.isSwitching &&
-    !tutorSessions.isHydrating;
 
   if (isAuthLoading) {
     return <main className="workspace" aria-busy="true" />;
@@ -176,23 +177,39 @@ export function App() {
 
         <div className="main-grid">
           <ProblemContextPanel
+            confirmDisabled={
+              problemContextStep1.isBusy ||
+              !problemContextStep1.imagePrompt.trim() ||
+              problemContextStep1.promptConfirmed
+            }
             emptyMessage={problemContextStep1.emptyMessage}
+            extractionAlert={problemContextStep1.extractionAlert}
             extractionStatusHint={problemContextStep1.extractionStatusHint}
+            fileInputDisabled={problemContextStep1.isBusy || !sessionReady}
             imageMeta={problemContextStep1.imageMeta}
             imagePrompt={problemContextStep1.imagePrompt}
             isBusy={problemContextStep1.isBusy}
+            onConfirmPrompt={problemContextStep1.confirmPrompt}
             onFileChange={problemContextStep1.handleFileChange}
             onPromptChange={problemContextStep1.handlePromptChange}
             onReExtract={problemContextStep1.reExtractQuestion}
+            onRetryUpload={problemContextStep1.retryUpload}
             onSubmit={problemImageSend.sendImage}
             previewUrl={problemContextStep1.previewUrl}
+            previewWarning={problemContextStep1.previewWarning}
             reExtractDisabled={
               problemContextStep1.isBusy ||
               !problemContextStep1.objectKey ||
               !sessionReady
             }
+            retryUploadVisible={
+              problemContextStep1.uploadStatus === "failed" && Boolean(problemContextStep1.preparedImage)
+            }
             sendDisabled={
-              problemImageSend.sendDisabled || !sessionReady || problemContextStep1.isBusy
+              problemImageSend.sendDisabled ||
+              !sessionReady ||
+              problemContextStep1.isBusy ||
+              !problemContextStep1.promptConfirmed
             }
           />
 

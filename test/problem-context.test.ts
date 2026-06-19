@@ -10,7 +10,10 @@ import {
   createProblemImageObjectKey,
   isOwnedProblemImageKey
 } from "../dist/problem-context/problem-image-store.js";
-import { extractQuestionFromImageUrl } from "../dist/problem-context/question-extraction-service.js";
+import {
+  extractQuestionFromImageUrl,
+  normalizeExtractionResponse
+} from "../dist/problem-context/question-extraction-service.js";
 import type { RequestContext } from "../src/request-context.ts";
 
 const ownerKey = "user-a";
@@ -108,6 +111,7 @@ test("handleExtractQuestionRequest sends an R2 URL to OpenAI and parses the ques
         output_text: JSON.stringify({
           confidence: "high",
           notes: null,
+          outcome: "extracted",
           question: "What is the value of x?"
         })
       });
@@ -129,6 +133,8 @@ test("handleExtractQuestionRequest sends an R2 URL to OpenAI and parses the ques
 
     assert.equal(response.question, "What is the value of x?");
     assert.equal(response.confidence, "high");
+    assert.equal(response.outcome, "extracted");
+    assert.equal(response.requiresConfirmation, true);
 
     const input = openAiBody?.input as Array<{ content: Array<Record<string, string>> }>;
     const imagePart = input[0]?.content.find((part) => part.type === "input_image");
@@ -138,6 +144,8 @@ test("handleExtractQuestionRequest sends an R2 URL to OpenAI and parses the ques
     const updated = await store.getSession(ownerKey, session.id);
     assert.equal(updated?.session.imageObjectKey, objectKey);
     assert.equal(updated?.session.imagePrompt, "What is the value of x?");
+    assert.equal(updated?.session.extractionOutcome, "extracted");
+    assert.equal(updated?.session.promptConfirmed, false);
 
     const extractedEvent = updated?.events.find((event) => event.message === "Question extracted");
     assert.ok(extractedEvent);
@@ -157,6 +165,7 @@ test("extractQuestionFromImageUrl handles low-confidence empty questions", async
         output_text: JSON.stringify({
           confidence: "low",
           notes: "No readable question was visible.",
+          outcome: "none",
           question: ""
         })
       });
@@ -170,7 +179,68 @@ test("extractQuestionFromImageUrl handles low-confidence empty questions", async
 
     assert.equal(response.confidence, "low");
     assert.equal(response.question, "");
+    assert.equal(response.outcome, "none");
     assert.equal(response.notes, "No readable question was visible.");
+    assert.equal(response.requiresConfirmation, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("normalizeExtractionResponse never returns extracted for empty questions", () => {
+  const normalized = normalizeExtractionResponse({
+    confidence: "high",
+    notes: null,
+    outcome: "extracted",
+    question: "   "
+  });
+
+  assert.equal(normalized.outcome, "none");
+});
+
+test("handleExtractQuestionRequest persists partial extraction metadata", async () => {
+  const store = new MemorySessionStore();
+  const session = await store.createSession(ownerKey, { title: "Algebra" });
+  const objectKey = createProblemImageObjectKey(session.id);
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = input instanceof Request ? input.url : String(input);
+
+    if (url.includes("r2.cloudflarestorage.com")) {
+      return new Response(null, { status: 200 });
+    }
+
+    if (url === "https://api.openai.com/v1/responses") {
+      return Response.json({
+        output_text: JSON.stringify({
+          confidence: "medium",
+          notes: "Bottom of the page was cut off.",
+          outcome: "partial",
+          question: "Find the area of the triangle."
+        })
+      });
+    }
+
+    throw new Error(`Unexpected fetch: ${url}`);
+  }) as typeof fetch;
+
+  try {
+    const response = await handleExtractQuestionRequest(
+      {
+        objectKey,
+        sessionId: session.id
+      },
+      r2Env,
+      store,
+      context
+    );
+
+    assert.equal(response.outcome, "partial");
+    const updated = await store.getSession(ownerKey, session.id);
+    assert.equal(updated?.session.extractionOutcome, "partial");
+    assert.equal(updated?.session.extractionNotes, "Bottom of the page was cut off.");
+    assert.equal(updated?.session.promptConfirmed, false);
   } finally {
     globalThis.fetch = originalFetch;
   }

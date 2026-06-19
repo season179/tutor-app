@@ -731,6 +731,39 @@ p {
   margin: 0 0 0.35rem;
 }
 
+.extraction-alert {
+  border-radius: 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  margin: 0 0 0.5rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.extraction-alert p {
+  margin: 0;
+}
+
+.extraction-alert-notes {
+  color: var(--ink-muted);
+  margin-top: 0.35rem !important;
+}
+
+.extraction-alert--neutral {
+  background: color-mix(in srgb, var(--surface-raised) 88%, var(--accent) 12%);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, var(--accent) 20%);
+}
+
+.extraction-alert--warning {
+  background: color-mix(in srgb, var(--surface-raised) 82%, #c9792d 18%);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, #c9792d 30%);
+}
+
+.preview-warning {
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  margin: 0.35rem 0 0;
+}
+
 .later-step-action {
   opacity: 0.72;
 }

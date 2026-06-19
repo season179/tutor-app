@@ -54,13 +54,25 @@ function toSessionListError(error: unknown): SessionListError {
 }
 
 function toLoadedSessionContext(
-  session: Pick<TutorSessionRecord, "imageMeta" | "imageName" | "imageObjectKey" | "imagePrompt">
+  session: Pick<
+    TutorSessionRecord,
+    | "extractionNotes"
+    | "extractionOutcome"
+    | "imageMeta"
+    | "imageName"
+    | "imageObjectKey"
+    | "imagePrompt"
+    | "promptConfirmed"
+  >
 ): LoadedSessionContext {
   return {
+    extractionNotes: session.extractionNotes,
+    extractionOutcome: session.extractionOutcome,
     imageMeta: session.imageMeta,
     imageName: session.imageName,
     imageObjectKey: session.imageObjectKey,
-    imagePrompt: session.imagePrompt
+    imagePrompt: session.imagePrompt,
+    promptConfirmed: session.promptConfirmed
   };
 }
 

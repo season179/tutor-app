@@ -45,6 +45,10 @@ function fitWithin(width: number, height: number, maxDimension: number): { heigh
 }
 
 async function decodeImage(file: File): Promise<DecodedImage> {
+  if (file.size === 0) {
+    throw new Error("The selected file is empty.");
+  }
+
   if (!file.type.startsWith("image/")) {
     throw new Error("Choose a problem image file.");
   }
@@ -70,7 +74,7 @@ async function decodeImage(file: File): Promise<DecodedImage> {
     image.decoding = "async";
     const loadedImage = await new Promise<HTMLImageElement>((resolve, reject) => {
       image.addEventListener("load", () => resolve(image), { once: true });
-      image.addEventListener("error", () => reject(new Error("The selected image could not be decoded.")), {
+      image.addEventListener("error", () => reject(new Error("The selected image could not be decoded. Try JPG or PNG.")), {
         once: true
       });
       image.src = objectUrl;

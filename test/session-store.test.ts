@@ -88,11 +88,15 @@ test("MemorySessionStore transferOwnerSessions moves sessions and preserves even
 test("mapD1SessionRow normalizes optional image columns", () => {
   const session = mapD1SessionRow({
     created_at: "2026-06-17T01:02:03.000Z",
+    extraction_notes: "Bottom cut off.",
+    extraction_outcome: "partial",
     id: "session-1",
     image_meta_json: JSON.stringify({ bytes: 120_000, height: 900, width: 1200 }),
     image_name: "",
-    image_prompt: "",
+    image_object_key: "session-1/image.jpg",
+    image_prompt: "Find x.",
     owner_key: "access:user-a",
+    prompt_confirmed: 1,
     status: "draft",
     title: "Algebra help",
     updated_at: "2026-06-17T01:02:03.000Z"
@@ -100,5 +104,8 @@ test("mapD1SessionRow normalizes optional image columns", () => {
 
   assert.deepEqual(session.imageMeta, { bytes: 120_000, height: 900, width: 1200 });
   assert.equal(session.imageName, null);
-  assert.equal(session.imagePrompt, null);
+  assert.equal(session.imagePrompt, "Find x.");
+  assert.equal(session.extractionOutcome, "partial");
+  assert.equal(session.extractionNotes, "Bottom cut off.");
+  assert.equal(session.promptConfirmed, true);
 });

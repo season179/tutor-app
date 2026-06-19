@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { extractionOutcomes } from "./problem-context/problem-context-types.js";
 import type {
   AppendSessionEventRequest,
   CreateTutorSessionRequest,
@@ -25,12 +26,17 @@ export const createTutorSessionRequestSchema = z.object({
   title: z.string().trim().min(1).max(120).optional()
 });
 
+const extractionOutcomeSchema = z.enum(extractionOutcomes);
+
 export const updateTutorSessionRequestSchema = z
   .object({
+    extractionNotes: z.string().max(2_000).nullable().optional(),
+    extractionOutcome: extractionOutcomeSchema.nullable().optional(),
     imageMeta: sessionImageMetaSchema.nullable().optional(),
     imageName: z.string().trim().min(1).max(255).nullable().optional(),
     imageObjectKey: z.string().trim().min(1).max(512).nullable().optional(),
     imagePrompt: z.string().max(4_000).nullable().optional(),
+    promptConfirmed: z.boolean().optional(),
     status: tutorSessionStatusSchema.optional(),
     title: z.string().trim().min(1).max(120).optional()
   })
@@ -53,11 +59,14 @@ const tutorSessionSummarySchema = z.object({
 }) satisfies z.ZodType<TutorSessionSummary>;
 
 const tutorSessionRecordSchema = tutorSessionSummarySchema.extend({
+  extractionNotes: z.string().nullable(),
+  extractionOutcome: extractionOutcomeSchema.nullable(),
   imageMeta: sessionImageMetaSchema.nullable(),
   imageName: z.string().nullable(),
   imageObjectKey: z.string().nullable(),
   imagePrompt: z.string().nullable(),
-  ownerKey: z.string().min(1)
+  ownerKey: z.string().min(1),
+  promptConfirmed: z.boolean()
 }) satisfies z.ZodType<TutorSessionRecord>;
 
 const sessionEventRecordSchema = z.object({

@@ -1,6 +1,7 @@
+import type { ExtractionOutcome } from "../problem-context/problem-context-types.js";
+import type { SessionImageMeta, TutorSessionStatus, TutorSessionSummary } from "../session-types.js";
 import type { VoiceClientAdapter } from "../voice-client-adapter.js";
 import type { VoiceSessionDescriptor } from "../voice-types.js";
-import type { SessionImageMeta, TutorSessionStatus, TutorSessionSummary } from "../session-types.js";
 
 export type StatusTone = "ready" | "working" | "connected" | "error";
 
@@ -17,10 +18,13 @@ export type TutorSessionState = {
 };
 
 export type LoadedSessionContext = {
+  extractionNotes: string | null;
+  extractionOutcome: ExtractionOutcome | null;
   imageMeta: SessionImageMeta | null;
   imageName: string | null;
   imageObjectKey: string | null;
   imagePrompt: string | null;
+  promptConfirmed: boolean;
 };
 
 export type SessionListErrorKind = "auth" | "network" | "unknown";

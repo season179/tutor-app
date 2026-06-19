@@ -39,6 +39,21 @@ test("parseUpdateTutorSessionRequest omits undefined optional fields", () => {
   });
 });
 
+test("updateTutorSessionRequestSchema accepts extraction metadata", () => {
+  assert.deepEqual(
+    updateTutorSessionRequestSchema.parse({
+      extractionNotes: "Bottom cut off.",
+      extractionOutcome: "partial",
+      promptConfirmed: true
+    }),
+    {
+      extractionNotes: "Bottom cut off.",
+      extractionOutcome: "partial",
+      promptConfirmed: true
+    }
+  );
+});
+
 test("appendSessionEventRequestSchema requires a message", () => {
   assert.equal(appendSessionEventRequestSchema.safeParse({}).success, false);
   assert.deepEqual(appendSessionEventRequestSchema.parse({ message: "Voice session connected" }), {

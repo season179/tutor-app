@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { parseObjectWithSchema } from "../schema-parser.js";
 import {
+  extractionOutcomes,
   maxProblemImageBytes,
   type ExtractQuestionRequest,
   type ExtractQuestionResponse,
@@ -32,7 +33,9 @@ export const previewUrlRequestSchema = z.object({
 export const extractQuestionResponseSchema = z.object({
   confidence: z.enum(["high", "low", "medium"]),
   notes: z.string().nullable(),
-  question: z.string()
+  outcome: z.enum(extractionOutcomes),
+  question: z.string(),
+  requiresConfirmation: z.boolean()
 }) satisfies z.ZodType<ExtractQuestionResponse>;
 
 export const uploadUrlResponseSchema = z.object({

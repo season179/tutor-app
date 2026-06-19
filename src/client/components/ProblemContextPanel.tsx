@@ -1,35 +1,50 @@
 import type { FormEvent } from "react";
 
+import type { ExtractionAlert } from "../lib/problem-context-extraction.js";
 import { ActionButton } from "./ActionButton.js";
 import { Panel } from "./Panel.js";
 
 type ProblemContextPanelProps = {
+  confirmDisabled: boolean;
   emptyMessage: string;
+  extractionAlert: ExtractionAlert | null;
   extractionStatusHint: string | null;
+  fileInputDisabled: boolean;
   imageMeta: string;
   imagePrompt: string;
   isBusy: boolean;
-  onFileChange: (file: File | undefined) => void;
+  onConfirmPrompt: () => void;
+  onFileChange: (file: File | undefined, input?: HTMLInputElement | null) => void;
   onPromptChange: (value: string) => void;
   onReExtract: () => void | Promise<void>;
+  onRetryUpload: () => void | Promise<void>;
   onSubmit: () => void | Promise<void>;
   previewUrl: string | undefined;
+  previewWarning: string | null;
   reExtractDisabled: boolean;
+  retryUploadVisible: boolean;
   sendDisabled: boolean;
 };
 
 export function ProblemContextPanel({
+  confirmDisabled,
   emptyMessage,
+  extractionAlert,
   extractionStatusHint,
+  fileInputDisabled,
   imageMeta,
   imagePrompt,
   isBusy,
+  onConfirmPrompt,
   onFileChange,
   onPromptChange,
   onReExtract,
+  onRetryUpload,
   onSubmit,
   previewUrl,
+  previewWarning,
   reExtractDisabled,
+  retryUploadVisible,
   sendDisabled
 }: ProblemContextPanelProps) {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -56,9 +71,9 @@ export function ProblemContextPanel({
           <span>Problem image</span>
           <input
             accept="image/*"
-            disabled={isBusy}
+            disabled={fileInputDisabled}
             type="file"
-            onChange={(event) => onFileChange(event.target.files?.item(0) ?? undefined)}
+            onChange={(event) => onFileChange(event.target.files?.item(0) ?? undefined, event.target)}
           />
         </label>
 
@@ -69,6 +84,15 @@ export function ProblemContextPanel({
               <p className="extraction-status" aria-live="polite">
                 {extractionStatusHint}
               </p>
+            ) : null}
+            {extractionAlert ? (
+              <div
+                className={`extraction-alert extraction-alert--${extractionAlert.tone}`}
+                aria-live="polite"
+              >
+                <p>{extractionAlert.message}</p>
+                {extractionAlert.notes ? <p className="extraction-alert-notes">{extractionAlert.notes}</p> : null}
+              </div>
             ) : null}
             <textarea
               disabled={isBusy}
@@ -87,10 +111,24 @@ export function ProblemContextPanel({
               )}
             </div>
             <p className="image-meta">{imageMeta}</p>
+            {previewWarning ? <p className="preview-warning">{previewWarning}</p> : null}
           </div>
         </div>
 
         <div className="form-actions">
+          {retryUploadVisible ? (
+            <ActionButton
+              disabled={isBusy}
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                void onRetryUpload();
+              }}
+            >
+              Retry upload
+            </ActionButton>
+          ) : null}
+
           <ActionButton
             disabled={reExtractDisabled}
             type="button"
@@ -100,6 +138,15 @@ export function ProblemContextPanel({
             }}
           >
             Re-extract
+          </ActionButton>
+
+          <ActionButton
+            disabled={confirmDisabled}
+            type="button"
+            variant="secondary"
+            onClick={onConfirmPrompt}
+          >
+            Confirm question
           </ActionButton>
 
           <ActionButton

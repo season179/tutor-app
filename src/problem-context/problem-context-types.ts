@@ -4,6 +4,16 @@ export const problemContextPreviewUrlPath = "/api/problem-context/preview-url";
 
 export const maxProblemImageBytes = 5_000_000;
 
+export const extractionOutcomes = [
+  "extracted",
+  "multiple_questions",
+  "none",
+  "not_a_problem",
+  "partial"
+] as const;
+
+export type ExtractionOutcome = (typeof extractionOutcomes)[number];
+
 export type ProblemImageMeta = {
   bytes: number;
   contentType: string;
@@ -32,7 +42,9 @@ export type ExtractQuestionRequest = {
 export type ExtractQuestionResponse = {
   confidence: "high" | "low" | "medium";
   notes: string | null;
+  outcome: ExtractionOutcome;
   question: string;
+  requiresConfirmation: boolean;
 };
 
 export type PreviewUrlRequest = {
