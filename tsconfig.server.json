@@ -9,5 +9,10 @@
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": ["src/server.ts"]
+  "include": [
+    "src/server.ts",
+    "src/tutor-action.ts",
+    "src/phase-policy.ts",
+    "src/tutor-action-validator.ts"
+  ]
 }

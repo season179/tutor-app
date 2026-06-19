@@ -11,3 +11,4 @@ public/client.js.map
 worker-startup.cpuprofile
 codedb.snapshot
 .DS_Store
+.lavish/
