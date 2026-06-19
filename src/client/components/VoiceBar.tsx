@@ -5,6 +5,7 @@ import { classNames } from "../lib/class-names.js";
 type VoiceBarProps = {
   audioRef: RefObject<HTMLAudioElement | null>;
   canRecordAudioTurn: boolean;
+  extractingQuestion: boolean;
   hasPriorActivity: boolean;
   isRecording: boolean;
   isRunning: boolean;
@@ -25,6 +26,7 @@ type VoiceBarProps = {
 export function VoiceBar({
   audioRef,
   canRecordAudioTurn,
+  extractingQuestion,
   hasPriorActivity,
   isRecording,
   isRunning,
@@ -40,6 +42,7 @@ export function VoiceBar({
     <div aria-label="Voice controls" className="voice-bar" role="group">
       <PrimaryTalkButton
         canRecordAudioTurn={canRecordAudioTurn}
+        extractingQuestion={extractingQuestion}
         hasPriorActivity={hasPriorActivity}
         isRecording={isRecording}
         isRunning={isRunning}
@@ -79,6 +82,7 @@ type PrimaryTalkButtonProps = Omit<VoiceBarProps, "audioRef" | "onStop">;
 
 function PrimaryTalkButton({
   canRecordAudioTurn,
+  extractingQuestion,
   hasPriorActivity,
   isRecording,
   isRunning,
@@ -89,8 +93,20 @@ function PrimaryTalkButton({
 }: PrimaryTalkButtonProps) {
   if (!isRunning) {
     const startLabel = hasPriorActivity ? "Continue with Echo" : "Start with Echo";
+    // Talking before the question is read leads to a session with no problem
+    // context, so hold the start button while extraction is in flight.
+    const extractionTooltip = extractingQuestion
+      ? "Available once the question is ready"
+      : undefined;
     return (
-      <button className="talk" disabled={!sessionReady} onClick={onStart} type="button">
+      <button
+        aria-label={extractionTooltip ? `${startLabel} — ${extractionTooltip}` : undefined}
+        className="talk"
+        disabled={!sessionReady || extractingQuestion}
+        title={extractionTooltip}
+        onClick={onStart}
+        type="button"
+      >
         <MicIcon />
         {startLabel}
       </button>

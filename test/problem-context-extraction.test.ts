@@ -43,6 +43,15 @@ test("extractionStatusHint surfaces manual-entry guidance for no_question", () =
   assert.match(extractionStatusHint("no_question", null) ?? "", /Enter the question manually/i);
 });
 
+test("extractionStatusHint makes the in-progress extraction obvious", () => {
+  // While the vision model reads the photo, this hint is the in-panel cue that
+  // mirrors the center focus card. It must read as actively working, not ready.
+  const hint = extractionStatusHint("extracting", null);
+
+  assert.match(hint ?? "", /extract/i);
+  assert.doesNotMatch(hint ?? "", /ready|review|confirm/i);
+});
+
 test("resolvePromptConfirmedForSession treats legacy saved prompts as confirmed", () => {
   assert.equal(
     resolvePromptConfirmedForSession({

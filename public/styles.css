@@ -1331,6 +1331,46 @@ pre {
   line-height: 1.3;
 }
 
+/* While the vision model reads the question from a photo, the focus card
+   becomes the one place that tells the learner work is in progress. */
+.focus-card[data-state="extracting"] {
+  border-color: color-mix(in srgb, var(--line-strong) 70%, var(--focus) 30%);
+  box-shadow: 0 6px 18px -10px oklch(0.22 0.035 158 / 0.3), 0 2px 8px var(--shadow);
+}
+
+.focus-card[data-state="extracting"] .ask {
+  align-items: center;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.focus-spinner {
+  align-items: center;
+  block-size: 1.25rem;
+  color: var(--primary);
+  display: inline-flex;
+  flex: 0 0 auto;
+  inline-size: 1.25rem;
+}
+
+.focus-spinner svg {
+  animation: focus-spin 0.9s linear infinite;
+  block-size: 100%;
+  inline-size: 100%;
+}
+
+@keyframes focus-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-spinner svg {
+    animation: none;
+  }
+}
+
 .vchip {
   align-items: center;
   border-radius: 8px;

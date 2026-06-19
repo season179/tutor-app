@@ -7,6 +7,7 @@ type CenterAnchorProps = {
   audioRef: RefObject<HTMLAudioElement | null>;
   canRecordAudioTurn: boolean;
   currentPhase: SessionPhase;
+  extractingQuestion: boolean;
   focusAsk: string | null;
   gateStatus: ComprehensionGateStatus | null;
   hasPriorActivity: boolean;
@@ -32,6 +33,7 @@ export function CenterAnchor({
   audioRef,
   canRecordAudioTurn,
   currentPhase,
+  extractingQuestion,
   focusAsk,
   gateStatus,
   hasPriorActivity,
@@ -53,18 +55,34 @@ export function CenterAnchor({
   const inWrap = currentPhase === "wrap_up" || currentPhase === "memory_write";
   // During the gate, the focus card shows which of the Three Reads the child is on.
   const readStep = currentPhase === "frame_task" ? gateReadLabel(gateStatus) : null;
+  // Reading the question from a photo blocks the start of a session, so while the
+  // vision model is working we tell the learner that here instead of the idle prompt.
+  const showExtraction = extractingQuestion && !isRunning;
 
   return (
     <div className="cc-anchor">
-      <div className="focus-card">
+      <div className="focus-card" data-state={showExtraction ? "extracting" : undefined}>
         <div className="focus-kicker">
-          {readStep ? readStep.kicker : kickerLabel(currentPhase, Boolean(focusAsk))}
+          {showExtraction
+            ? "Reading the photo"
+            : readStep
+              ? readStep.kicker
+              : kickerLabel(currentPhase, Boolean(focusAsk))}
           {outputLanguageLabel && inAnswerCheck ? (
             <span className="lang-chip">{outputLanguageLabel}</span>
           ) : null}
         </div>
         <div className="ask">
-          {readStep ? readStep.prompt : resolveAsk(focusAsk, inWrap, isRunning, isRecording)}
+          {showExtraction ? (
+            <>
+              <Spinner />
+              Reading the question from your photo…
+            </>
+          ) : readStep ? (
+            readStep.prompt
+          ) : (
+            resolveAsk(focusAsk, inWrap, isRunning, isRecording)
+          )}
         </div>
         {pendingHint && inStepLoop ? (
           <div className="aid aid--hint">
@@ -83,6 +101,7 @@ export function CenterAnchor({
       <VoiceBar
         audioRef={audioRef}
         canRecordAudioTurn={canRecordAudioTurn}
+        extractingQuestion={extractingQuestion}
         hasPriorActivity={hasPriorActivity}
         isRecording={isRecording}
         isRunning={isRunning}
@@ -95,6 +114,22 @@ export function CenterAnchor({
         sessionReady={sessionReady}
       />
     </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <span aria-hidden="true" className="focus-spinner" role="presentation">
+      <svg
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2.5"
+        viewBox="0 0 24 24"
+      >
+        <path d="M21 12a9 9 0 1 1-6.2-8.6" />
+      </svg>
+    </span>
   );
 }
 

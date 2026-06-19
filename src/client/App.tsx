@@ -239,6 +239,7 @@ export function App() {
           audioRef={audioRef}
           canRecordAudioTurn={canRecordAudioTurn}
           currentPhase={liveSession.currentPhase}
+          extractingQuestion={problemContextStep1.isExtractingQuestion}
           focusAsk={liveSession.focusAsk}
           gateStatus={liveSession.gateStatus}
           hasPriorActivity={activeSessionHasPriorActivity}

@@ -615,6 +615,7 @@ export function useProblemContextStep1({
     imageMeta,
     imagePrompt,
     isBusy,
+    isExtractingQuestion: extractionStatus === "extracting",
     loadSessionContext,
     objectKey,
     preparedImage,
