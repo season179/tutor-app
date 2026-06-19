@@ -120,7 +120,6 @@ export function useProblemContextStep1({
 
   const workflowIdRef = useRef(0);
   const promptPersistTimeoutRef = useRef<number | undefined>(undefined);
-  const extractedPromptRef = useRef("");
 
   const persistContext = useCallback(
     async (
@@ -172,7 +171,6 @@ export function useProblemContextStep1({
     setExtractionError(null);
     setPromptConfirmed(false);
     setIsBusy(false);
-    extractedPromptRef.current = "";
   }, []);
 
   const loadPreviewForObjectKey = useCallback(
@@ -212,7 +210,6 @@ export function useProblemContextStep1({
       const nextPrompt = promptFromExtraction(result.outcome, result.question);
       const nextStatus = mapOutcomeToExtractionStatus(result.outcome);
 
-      extractedPromptRef.current = nextPrompt;
       setImagePrompt(nextPrompt);
       setExtractionOutcome(result.outcome);
       setExtractionNotes(result.notes);
@@ -361,7 +358,6 @@ export function useProblemContextStep1({
       setSelectedImageFile(undefined);
       setObjectKey(undefined);
       setImagePrompt("");
-      extractedPromptRef.current = "";
 
       try {
         if (file.size === 0) {
@@ -497,11 +493,11 @@ export function useProblemContextStep1({
     (value: string) => {
       setImagePrompt(value);
 
-      const trimmed = value.trim();
-      const edited = trimmed !== extractedPromptRef.current.trim();
-      const nextPromptConfirmed = !trimmed ? false : edited ? true : promptConfirmed;
-
-      setPromptConfirmed(nextPromptConfirmed);
+      // Confirmation is the explicit "Confirm question" button's job. Editing the
+      // text must not confirm it: the old behavior auto-confirmed any change, which
+      // in the folded pin collapses the card on the first keystroke. Any edit leaves
+      // the question unconfirmed, so the Confirm button stays available to re-confirm.
+      setPromptConfirmed(false);
 
       if (promptPersistTimeoutRef.current !== undefined) {
         window.clearTimeout(promptPersistTimeoutRef.current);
@@ -511,11 +507,11 @@ export function useProblemContextStep1({
         void persistContext(preparedImage, value, objectKey ?? null, {
           extractionNotes,
           extractionOutcome,
-          promptConfirmed: nextPromptConfirmed
+          promptConfirmed: false
         });
       }, 400);
     },
-    [extractionNotes, extractionOutcome, objectKey, persistContext, preparedImage, promptConfirmed]
+    [extractionNotes, extractionOutcome, objectKey, persistContext, preparedImage]
   );
 
   const confirmPrompt = useCallback(() => {
@@ -567,7 +563,6 @@ export function useProblemContextStep1({
       setPreviewUrl(undefined);
       setPreviewWarning(null);
       setImagePrompt(context.imagePrompt ?? "");
-      extractedPromptRef.current = context.imagePrompt ?? "";
       setExtractionOutcome(context.extractionOutcome);
       setExtractionNotes(context.extractionNotes);
       const hydratedPromptConfirmed = resolvePromptConfirmedForSession(context);
