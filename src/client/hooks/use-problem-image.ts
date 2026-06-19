@@ -122,7 +122,7 @@ export function useProblemImageSend({
         activeSession.adapter.requestReply(activeSession.descriptor.tutorPolicy.imageResponseInstructions);
       }
 
-      setStatus("Problem image sent. Waiting for your tutor...", "working");
+      setStatus("Problem image sent. Waiting for Coach Echo...", "working");
       logEvent("Problem image sent", {
         bytes: image.size,
         height: image.height,

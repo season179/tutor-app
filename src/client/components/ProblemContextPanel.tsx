@@ -55,14 +55,14 @@ export function ProblemContextPanel({
   return (
     <Panel
       className="problem-panel"
-      description="Add the page or prompt the tutor should reason from."
+      description="Add the page or prompt Coach Echo should reason from."
       id="problem-title"
       title="Problem context"
     >
       <div className="workflow-step">
         <p className="workflow-step-label">Step 1 · Confirm the question</p>
         <p className="workflow-step-description">
-          Upload a photo of the problem. We&apos;ll read the question so you can check it before tutoring.
+          Upload a photo of the problem. We&apos;ll read the question so you can check it before starting with Echo.
         </p>
       </div>
 

@@ -1,6 +1,6 @@
-# AI Tutor
+# Coach Echo
 
-Small TypeScript AI tutor app for turn-controlled voice tutoring. A student shares a homework screenshot, hears one small prompt from the tutor, records an answer, and gets the next short spoken hint only after that answer.
+Small TypeScript voice homework coach for turn-controlled tutoring. A student shares a homework screenshot, hears one small prompt from the tutor, records an answer, and gets the next short spoken hint only after that answer.
 
 ## Requirements
 

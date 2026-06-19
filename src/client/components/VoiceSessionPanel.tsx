@@ -31,7 +31,7 @@ export function VoiceSessionPanel({
   onStop,
   sessionReady
 }: VoiceSessionPanelProps) {
-  const startLabel = hasPriorActivity ? "Continue tutoring" : "Start tutoring";
+  const startLabel = hasPriorActivity ? "Continue with Echo" : "Start with Echo";
   const recordLabel = isRecording ? "Stop and send" : "Record answer";
 
   const controls = (

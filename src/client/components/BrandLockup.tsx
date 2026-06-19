@@ -3,8 +3,8 @@ export function BrandLockup() {
     <div className="brand-lockup">
       <span className="brand-mark" aria-hidden="true" />
       <div>
-        <h1>AI Tutor</h1>
-        <p>Voice study room</p>
+        <h1>Coach Echo</h1>
+        <p>Your voice homework coach</p>
       </div>
     </div>
   );

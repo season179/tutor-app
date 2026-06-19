@@ -14,7 +14,7 @@ type StartSessionOptions = {
   greet?: boolean;
 };
 
-const connectedStatusMessage = "Connected. Ask your tutor out loud.";
+const connectedStatusMessage = "Connected. Ask Coach Echo out loud.";
 const connectingStatusMessage = "Connecting...";
 const readyStatusMessage = "Ready when you are.";
 const startCancelledMessage = "Voice session start cancelled.";
@@ -208,7 +208,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
     async (greetOnOpen: boolean): Promise<TutorSessionState> => {
       const generation = startGenerationRef.current;
       setIsRunning(true);
-      setStatus("Requesting tutor session...", "working");
+      setStatus("Requesting Coach Echo session...", "working");
 
       let pendingSession: TutorSessionState | undefined;
 
@@ -221,7 +221,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
       try {
         const activeSessionId = sessionIdRef.current;
         if (!activeSessionId) {
-          throw new Error("Choose a tutoring session first.");
+          throw new Error("Choose a session first.");
         }
 
         const descriptor = await requestVoiceSessionDescriptor(activeSessionId);
@@ -331,7 +331,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
     const activeSession = sessionRef.current;
 
     if (!activeSession) {
-      setStatus("Start tutoring before recording an answer.", "error");
+      setStatus("Start with Echo before recording an answer.", "error");
       return;
     }
 
@@ -355,7 +355,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
     const activeSession = sessionRef.current;
 
     if (!activeSession) {
-      setStatus("Start tutoring before sending an answer.", "error");
+      setStatus("Start with Echo before sending an answer.", "error");
       return;
     }
 
@@ -385,7 +385,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
       sessionRef.current = undefined;
     }
 
-    setStatus("Starting tutoring before sharing the problem image...", "working");
+    setStatus("Starting with Echo before sharing the problem image...", "working");
     return startSession({ greet: false });
   }, [cleanupSession, setStatus, startSession]);
 

@@ -10,8 +10,8 @@ export function SignInScreen({ message, onSignIn }: SignInScreenProps) {
     <main className="sign-in-screen">
       <div className="sign-in-card">
         <span className="brand-mark brand-mark-lg" aria-hidden="true" />
-        <h1>AI Tutor</h1>
-        <p>{message ?? "Voice study room"}</p>
+        <h1>Coach Echo</h1>
+        <p>{message ?? "Your voice homework coach"}</p>
         <ActionButton variant="primary" onClick={onSignIn}>
           Sign in with Google
         </ActionButton>

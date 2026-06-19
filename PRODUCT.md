@@ -10,7 +10,7 @@ Students, parents, and tutors use this on a wide desktop monitor while working t
 
 ## Product Purpose
 
-AI Tutor is a small voice teaching room. It helps a learner talk through homework step by step, attach an image of the problem, and receive one concise spoken prompt at a time from a patient tutor. Success means the tutor waits for the student instead of revealing the whole path upfront.
+Coach Echo is a small voice teaching room. It helps a learner talk through homework step by step, attach an image of the problem, and receive one concise spoken prompt at a time from a patient coach. Success means Coach Echo waits for the student instead of revealing the whole path upfront.
 
 ## Brand Personality
 
