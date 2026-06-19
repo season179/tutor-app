@@ -745,156 +745,484 @@ p {
   transform: rotate(45deg);
 }
 
-.image-form {
+/* ---------- the problem pin: upload → review → confirm ---------- */
+/* Rendered directly in the stream (no Panel wrapper); the pin draws its own card
+   and a compact header, so status copy isn't repeated from the topbar badge. */
+.pin {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  box-shadow: 0 2px 8px var(--shadow);
   display: flex;
-  flex: 1;
+  flex: 0 0 auto;
   flex-direction: column;
-  gap: 1rem;
+  min-width: 0;
+  padding: 0.95rem 1.05rem 1.05rem;
+}
+
+.pin-head {
+  align-items: center;
+  display: flex;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.pin-eyebrow {
+  align-items: center;
+  color: var(--ink-soft);
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 780;
+  gap: 0.42rem;
+}
+
+.pin-eyebrow svg {
+  block-size: 0.95rem;
+  color: var(--primary);
+  inline-size: 0.95rem;
+}
+
+.pin-head-right {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+  margin-inline-start: auto;
+}
+
+.chip {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 740;
+  gap: 0.32rem;
+  line-height: 1;
+  padding: 0.26rem 0.55rem;
+}
+
+.chip svg {
+  block-size: 0.8rem;
+  flex: 0 0 auto;
+  inline-size: 0.8rem;
+}
+
+.chip--ok {
+  background: oklch(0.93 0.045 150);
+  border: 1px solid oklch(0.45 0.12 150 / 0.35);
+  color: oklch(0.34 0.1 150);
+}
+
+.chip--warn {
+  background: oklch(0.94 0.05 75);
+  border: 1px solid oklch(0.6 0.13 70 / 0.4);
+  color: oklch(0.42 0.1 60);
+}
+
+.replace-btn {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 720;
+  gap: 0.32rem;
   min-height: 0;
+  padding: 0.32rem 0.45rem;
+  transition:
+    background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.workflow-step {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+.replace-btn svg {
+  block-size: 0.92rem;
+  inline-size: 0.92rem;
 }
 
-.workflow-step-label {
-  color: var(--ink-strong);
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin: 0;
+.replace-btn:not(:disabled):hover {
+  background: var(--quiet-button);
+  color: var(--ink);
+  transform: none;
 }
 
-.workflow-step-description {
-  color: var(--ink-muted);
-  font-size: 0.875rem;
-  line-height: 1.45;
-  margin: 0;
-}
-
-.extraction-status {
-  color: var(--ink-muted);
-  font-size: 0.8125rem;
-  margin: 0 0 0.35rem;
-}
-
-.extraction-alert {
-  border-radius: 0.65rem;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  margin: 0 0 0.5rem;
-  padding: 0.65rem 0.75rem;
-}
-
-.extraction-alert p {
-  margin: 0;
-}
-
-.extraction-alert-notes {
-  color: var(--ink-muted);
-  margin-top: 0.35rem !important;
-}
-
-.extraction-alert--neutral {
-  background: color-mix(in srgb, var(--surface-raised) 88%, var(--accent) 12%);
-  border: 1px solid color-mix(in srgb, var(--border) 80%, var(--accent) 20%);
-}
-
-.extraction-alert--warning {
-  background: color-mix(in srgb, var(--surface-raised) 82%, #c9792d 18%);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, #c9792d 30%);
-}
-
-.preview-warning {
-  color: var(--ink-muted);
-  font-size: 0.8125rem;
-  margin: 0.35rem 0 0;
-}
-
-.later-step-action {
-  opacity: 0.72;
-}
-
-.image-grid {
+/* the photo: a rail in review, a thumbnail when folded */
+.pin-body {
   align-items: stretch;
-  display: grid;
-  flex: 1;
-  gap: 1rem;
-  grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.85fr);
-  min-height: 0;
-}
-
-.field {
-  display: grid;
-  grid-template-rows: auto auto;
-  gap: 0.45rem;
+  display: flex;
+  gap: 0.95rem;
   min-width: 0;
 }
 
-.field span {
-  color: var(--ink-soft);
-  font-size: 0.88rem;
+.photo-rail,
+.photo-thumb {
+  background: var(--surface-rest);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  cursor: zoom-in;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  transition: box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.photo-rail {
+  flex: 0 0 7.5rem;
+  inline-size: 7.5rem;
+}
+
+.photo-rail--loading {
+  animation: session-skeleton-pulse 1.4s ease-in-out infinite;
+  cursor: default;
+}
+
+.photo-thumb {
+  flex: 0 0 auto;
+}
+
+.photo-thumb--sm {
+  block-size: 2.2rem;
+  inline-size: 2.2rem;
+}
+
+.photo-rail:not(:disabled):hover,
+.photo-thumb:not(:disabled):hover {
+  box-shadow: 0 4px 12px var(--shadow);
+  transform: none;
+}
+
+.photo-rail:focus-visible,
+.photo-thumb:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.photo-rail .photo,
+.photo-thumb .photo {
+  block-size: 100%;
+  display: block;
+  inline-size: 100%;
+  object-fit: cover;
+}
+
+/* the zoom badge stays visible — tablets have no hover */
+.zoombadge {
+  align-items: center;
+  background: oklch(0.18 0.03 158 / 0.62);
+  border-radius: 6px;
+  bottom: 0.3rem;
+  color: oklch(0.98 0.01 150);
+  display: flex;
+  inset-block-end: 0.3rem;
+  inset-inline-end: 0.3rem;
+  justify-content: center;
+  block-size: 1.45rem;
+  inline-size: 1.45rem;
+  position: absolute;
+}
+
+.photo-thumb--sm .zoombadge {
+  block-size: 0.95rem;
+  inline-size: 0.95rem;
+  inset-block-end: 0.15rem;
+  inset-inline-end: 0.15rem;
+}
+
+.zoombadge svg {
+  block-size: 0.9rem;
+  inline-size: 0.9rem;
+}
+
+.photo-thumb--sm .zoombadge svg {
+  block-size: 0.62rem;
+  inline-size: 0.62rem;
+}
+
+.rail-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+/* the question is the hero */
+.question {
+  background: var(--surface-field);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  flex: 1;
+  font-size: 1.04rem;
+  line-height: 1.55;
+  max-width: 70ch;
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.skeleton-q {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 60ch;
+  padding-block: 0.5rem;
+}
+
+.skeleton-q .sk {
+  animation: session-skeleton-pulse 1.5s ease-in-out infinite;
+  background: oklch(0.9 0.012 148);
+  block-size: 0.95rem;
+  border-radius: 6px;
+}
+
+.skeleton-q .sk:nth-child(1) {
+  inline-size: 94%;
+}
+
+.skeleton-q .sk:nth-child(2) {
+  inline-size: 86%;
+}
+
+.skeleton-q .sk:nth-child(3) {
+  inline-size: 62%;
+}
+
+.note-line {
+  align-items: flex-start;
+  background: oklch(0.94 0.05 75);
+  border: 1px solid oklch(0.6 0.13 70 / 0.35);
+  border-radius: 9px;
+  color: oklch(0.38 0.09 60);
+  display: flex;
+  font-size: 0.85rem;
+  gap: 0.45rem;
+  line-height: 1.45;
+  padding: 0.55rem 0.7rem;
+}
+
+.note-line svg {
+  block-size: 1rem;
+  flex: 0 0 auto;
+  inline-size: 1rem;
+  margin-block-start: 0.08rem;
+}
+
+.note-line strong {
   font-weight: 760;
 }
 
-.question-field {
-  grid-template-rows: auto auto minmax(12rem, 1fr);
-  min-height: 0;
-}
-
-.question-field textarea {
-  min-height: 12rem;
-}
-
-.image-preview-block {
-  display: grid;
-  gap: 0.55rem;
-  grid-template-rows: minmax(0, 1fr) auto;
-  min-height: 0;
-}
-
-.image-preview {
-  align-items: center;
-  background: var(--surface-rest);
-  border: 1px dashed var(--line-strong);
-  border-radius: 10px;
+.preview-warning {
   color: var(--muted);
-  display: flex;
-  justify-content: center;
-  min-height: 17rem;
-  overflow: hidden;
-  padding: 0.9rem;
-  text-align: center;
-}
-
-.image-preview img {
-  block-size: 100%;
-  inline-size: 100%;
-  object-fit: contain;
-}
-
-.image-preview p,
-.image-meta {
+  font-size: 0.82rem;
   margin: 0;
 }
 
-.image-preview p {
-  font-size: 0.92rem;
-  line-height: 1.45;
-  max-width: 16ch;
-}
-
-.image-meta {
-  font-size: 0.84rem;
-  line-height: 1.42;
-  min-height: 2.4rem;
-}
-
-.form-actions {
+.pin-actions {
   align-items: center;
   display: flex;
-  justify-content: flex-start;
+  gap: 0.6rem;
+}
+
+.pin-actions-spacer {
+  margin-inline-start: auto;
+}
+
+.pin-btn {
+  align-items: center;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.92rem;
+  font-weight: 740;
+  gap: 0.45rem;
+  justify-content: center;
+  min-height: 2.7rem;
+  padding: 0.5rem 0.95rem;
+  transition:
+    background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pin-btn svg {
+  block-size: 1rem;
+  inline-size: 1rem;
+}
+
+.pin-btn--primary {
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+
+.pin-btn--primary:not(:disabled):hover {
+  background: var(--primary-hover);
+}
+
+.pin-btn--ghost {
+  background: var(--quiet-button);
+  color: var(--ink);
+}
+
+.pin-btn--ghost:not(:disabled):hover {
+  background: var(--quiet-button-hover);
+}
+
+.pin-btn--quiet {
+  background: transparent;
+  color: var(--muted);
+  min-height: 2.4rem;
+  padding: 0.42rem 0.6rem;
+}
+
+.pin-btn--quiet:not(:disabled):hover {
+  background: var(--quiet-button);
+  color: var(--ink);
+  transform: none;
+}
+
+/* empty: a compact dropzone, upload sized to its label */
+.dropzone {
+  align-items: center;
+  background: var(--surface-rest);
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 11px;
+  display: flex;
+  gap: 0.95rem;
+  padding: 0.95rem 1.05rem;
+}
+
+.dz-icon {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  block-size: 2.7rem;
+  color: var(--primary);
+  display: flex;
+  flex: 0 0 auto;
+  inline-size: 2.7rem;
+  justify-content: center;
+}
+
+.dz-icon svg {
+  block-size: 1.3rem;
+  inline-size: 1.3rem;
+}
+
+.dz-text {
+  min-width: 0;
+}
+
+.dz-text h3 {
+  font-size: 0.98rem;
+  font-weight: 780;
+  margin-bottom: 0.12rem;
+}
+
+.dz-text p {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.dz-action {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+
+/* confirmed → folded to one line */
+.pin--collapsed .collapsed-row {
+  align-items: center;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.collapsed-q {
+  color: var(--ink-soft);
+  flex: 1;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expand-btn {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  font-weight: 720;
+  gap: 0.3rem;
+  min-height: 0;
+  padding: 0.35rem 0.5rem;
+}
+
+.expand-btn svg {
+  block-size: 1rem;
+  inline-size: 1rem;
+}
+
+.expand-btn:not(:disabled):hover {
+  background: var(--quiet-button);
+  color: var(--ink);
+  transform: none;
+}
+
+/* the zoom dialog (escapes the stream's overflow via the top layer) */
+dialog.zoom {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px -20px oklch(0.2 0.04 158 / 0.5);
+  max-height: 88vh;
+  max-width: 720px;
+  padding: 0.8rem;
+}
+
+dialog.zoom::backdrop {
+  background: oklch(0.18 0.03 158 / 0.45);
+}
+
+.zoom-photo {
+  border-radius: 8px;
+  display: block;
+  max-height: 78vh;
+  max-width: 100%;
+}
+
+.zoom-meta {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-top: 0.6rem;
+  padding: 0 0.2rem;
+}
+
+.zoom-close {
+  background: var(--quiet-button);
+  border: 0;
+  border-radius: 7px;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 720;
+  min-height: 0;
+  padding: 0.35rem 0.7rem;
+}
+
+.zoom-close:not(:disabled):hover {
+  background: var(--quiet-button-hover);
+  transform: none;
 }
 
 .events-panel {

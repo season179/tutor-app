@@ -530,7 +530,7 @@ export function useProblemContextStep1({
       extractionOutcome,
       promptConfirmed: true
     });
-    setStatus("Question confirmed. You can ask about the image now.", "ready");
+    setStatus("Question confirmed. Start when you're ready.", "ready");
   }, [
     extractionNotes,
     extractionOutcome,

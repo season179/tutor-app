@@ -13,7 +13,6 @@ import { useAuth } from "./hooks/use-auth.js";
 import { useEventLog } from "./hooks/use-event-log.js";
 import { useLiveSession } from "./hooks/use-live-session.js";
 import { useProblemContextStep1 } from "./hooks/use-problem-context-step1.js";
-import { useProblemImageSend } from "./hooks/use-problem-image.js";
 import { useSidebarCollapsed } from "./hooks/use-sidebar-collapsed.js";
 import { useTutorSessions } from "./hooks/use-tutor-sessions.js";
 import { useVoiceSession } from "./hooks/use-voice-session.js";
@@ -68,10 +67,8 @@ export function App() {
   }, [isAnonymous, tutorSessions.activeSessionId, tutorSessions.sessions]);
 
   const {
-    ensureSessionReadyForImage,
     canRecordAudioTurn,
     finishAudioTurn,
-    getPayloadLimitBytes,
     isRecording,
     isRunning,
     setStatus,
@@ -107,19 +104,6 @@ export function App() {
     activeSessionId: tutorSessions.activeSessionId,
     logEvent,
     sessionReady,
-    setStatus
-  });
-
-  const problemImageSend = useProblemImageSend({
-    activeSessionId: tutorSessions.activeSessionId,
-    ensureSessionReadyForImage,
-    getPayloadLimitBytes,
-    imagePrompt: problemContextStep1.imagePrompt,
-    logEvent,
-    objectKey: problemContextStep1.objectKey,
-    onPreparedImageChange: problemContextStep1.setPreparedImageFromSend,
-    preparedImage: problemContextStep1.preparedImage,
-    selectedImageFile: problemContextStep1.selectedImageFile,
     setStatus
   });
 
@@ -200,9 +184,8 @@ export function App() {
                 !problemContextStep1.imagePrompt.trim() ||
                 problemContextStep1.promptConfirmed
               }
-              emptyMessage={problemContextStep1.emptyMessage}
               extractionAlert={problemContextStep1.extractionAlert}
-              extractionStatusHint={problemContextStep1.extractionStatusHint}
+              extractionStatus={problemContextStep1.extractionStatus}
               fileInputDisabled={problemContextStep1.isBusy || !sessionReady}
               imageMeta={problemContextStep1.imageMeta}
               imagePrompt={problemContextStep1.imagePrompt}
@@ -212,9 +195,9 @@ export function App() {
               onPromptChange={problemContextStep1.handlePromptChange}
               onReExtract={problemContextStep1.reExtractQuestion}
               onRetryUpload={problemContextStep1.retryUpload}
-              onSubmit={problemImageSend.sendImage}
               previewUrl={problemContextStep1.previewUrl}
               previewWarning={problemContextStep1.previewWarning}
+              promptConfirmed={problemContextStep1.promptConfirmed}
               reExtractDisabled={
                 problemContextStep1.isBusy ||
                 !problemContextStep1.objectKey ||
@@ -223,12 +206,7 @@ export function App() {
               retryUploadVisible={
                 problemContextStep1.uploadStatus === "failed" && Boolean(problemContextStep1.preparedImage)
               }
-              sendDisabled={
-                problemImageSend.sendDisabled ||
-                !sessionReady ||
-                problemContextStep1.isBusy ||
-                !problemContextStep1.promptConfirmed
-              }
+              uploadStatus={problemContextStep1.uploadStatus}
             />
           }
           turns={liveSession.turns}
