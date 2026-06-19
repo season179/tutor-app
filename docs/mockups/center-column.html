@@ -1,0 +1,958 @@
+<title>Coach Echo — Center Column Mockups</title>
+<style>
+  :root {
+    /* copied verbatim from public/styles.css — match the app exactly */
+    --room: oklch(0.88 0.018 150);
+    --room-low: oklch(0.84 0.02 152);
+    --room-high: oklch(0.94 0.015 146);
+    --surface: oklch(0.97 0.011 146);
+    --surface-rest: oklch(0.94 0.014 148);
+    --surface-low: oklch(0.91 0.017 150);
+    --surface-field: oklch(0.985 0.008 144);
+    --ink: oklch(0.18 0.027 160);
+    --ink-soft: oklch(0.27 0.026 158);
+    --muted: oklch(0.35 0.023 156);
+    --line: oklch(0.43 0.027 158 / 0.24);
+    --line-strong: oklch(0.35 0.034 158 / 0.42);
+    --primary: oklch(0.33 0.066 158);
+    --primary-hover: oklch(0.29 0.071 158);
+    --primary-ink: oklch(0.86 0.03 150);
+    --quiet-button: oklch(0.93 0.013 148);
+    --quiet-button-hover: oklch(0.89 0.017 148);
+    --disabled-bg: oklch(0.91 0.008 150);
+    --disabled-ink: oklch(0.56 0.016 156);
+    --focus: oklch(0.82 0.083 148);
+    --danger: oklch(0.42 0.069 32);
+    --danger-soft: oklch(0.78 0.031 42);
+    --success: oklch(0.45 0.12 150);
+    --shadow: oklch(0.22 0.035 158 / 0.07);
+    --amber: #c9792d;
+    --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--ink);
+    background:
+      linear-gradient(180deg, var(--room-high), var(--room) 36%, var(--room-low)),
+      var(--room);
+    -webkit-font-smoothing: antialiased;
+    font-synthesis-weight: none;
+  }
+
+  h1, h2, h3, p { margin: 0; }
+
+  /* ---------- gallery chrome ---------- */
+  .page { max-width: 1140px; margin: 0 auto; padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1rem, 3vw, 2rem) 5rem; }
+
+  .masthead { margin-bottom: 2.5rem; }
+  .eyebrow {
+    font-size: 0.78rem; font-weight: 760; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--primary); margin-bottom: 0.85rem;
+  }
+  .masthead h1 { font-size: clamp(1.9rem, 4.5vw, 2.9rem); font-weight: 820; line-height: 1.04; letter-spacing: -0.01em; max-width: 22ch; }
+  .masthead .lede { margin-top: 1rem; font-size: clamp(1rem, 1.6vw, 1.12rem); line-height: 1.55; color: var(--ink-soft); max-width: 64ch; }
+  .byline { margin-top: 1.1rem; font-size: 0.9rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; align-items: center; }
+  .byline strong { color: var(--ink-soft); font-weight: 760; }
+  .byline .sep { width: 4px; height: 4px; border-radius: 999px; background: var(--line-strong); }
+
+  /* forks + legend cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 1rem; margin-top: 2rem; }
+  .note {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 2px 8px var(--shadow); padding: 1.1rem 1.2rem;
+  }
+  .note h3 { font-size: 0.96rem; font-weight: 790; margin-bottom: 0.5rem; }
+  .note p { font-size: 0.9rem; line-height: 1.5; color: var(--muted); }
+  .note .tag { display: inline-block; font-size: 0.72rem; font-weight: 740; letter-spacing: 0.06em; text-transform: uppercase; color: var(--primary); margin-bottom: 0.55rem; }
+
+  .legend { margin-top: 1rem; padding: 1.1rem 1.2rem; }
+  .legend h3 { font-size: 0.96rem; font-weight: 790; margin-bottom: 0.8rem; }
+  .legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 0.6rem 1.4rem; }
+  .legend-item { display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.85rem; line-height: 1.4; color: var(--muted); }
+  .legend-item b { color: var(--ink-soft); font-weight: 720; }
+
+  /* ---------- frame (caption + window) ---------- */
+  .frame { margin-top: 3rem; }
+  .frame-caption { display: flex; gap: 1rem; align-items: baseline; margin-bottom: 1rem; flex-wrap: wrap; }
+  .frame-num { font-size: 0.85rem; font-weight: 820; color: var(--primary); font-variant-numeric: tabular-nums; flex: 0 0 auto; padding-top: 0.1rem; }
+  .frame-caption .ftext { min-width: 0; }
+  .frame-caption h2 { font-size: 1.18rem; font-weight: 800; letter-spacing: -0.005em; }
+  .frame-caption .shows { margin-top: 0.4rem; font-size: 0.92rem; line-height: 1.5; color: var(--muted); max-width: 70ch; }
+  .frame-caption .shows b { color: var(--ink-soft); font-weight: 720; }
+
+  .window {
+    width: min(720px, 100%); border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--line-strong); background: var(--surface-low);
+    box-shadow: 0 24px 60px -28px oklch(0.22 0.035 158 / 0.45), 0 2px 8px var(--shadow);
+  }
+  .winbar { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.85rem; background: var(--surface-rest); border-bottom: 1px solid var(--line); }
+  .winbar .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--line-strong); opacity: 0.5; }
+  .winbar .winlabel { margin-left: 0.6rem; font-size: 0.76rem; color: var(--muted); font-weight: 600; }
+  .winbar .winside { margin-left: auto; font-size: 0.72rem; color: var(--muted); }
+
+  /* ---------- the center column ---------- */
+  .cc {
+    position: relative;
+    display: grid; grid-template-rows: auto auto 1fr auto;
+    height: 720px; background: var(--surface-low); padding: 0.9rem; gap: 0.8rem;
+  }
+  .cc--short { height: 640px; }
+
+  .cc-topbar {
+    display: flex; align-items: center; gap: 0.8rem; justify-content: space-between;
+    background: var(--surface-low); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 2px 8px var(--shadow); padding: 0.7rem 0.85rem; min-height: 0;
+  }
+  .brand { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+  .brand-mark {
+    flex: 0 0 auto; width: 2.1rem; height: 2.1rem; border-radius: 9px;
+    border: 1px solid var(--line-strong);
+    box-shadow: inset 0 0 0 4px oklch(0.9 0.016 150);
+    background:
+      linear-gradient(90deg, transparent 32%, var(--primary) 32% 46%, transparent 46% 54%, var(--primary) 54% 68%, transparent 68%),
+      var(--surface);
+  }
+  .brand h1 { font-size: 1.05rem; font-weight: 820; line-height: 1.05; }
+  .brand p { font-size: 0.74rem; color: var(--muted); }
+  .topbar-right { display: flex; align-items: center; gap: 0.6rem; flex: 0 0 auto; }
+
+  .status {
+    display: inline-flex; align-items: center; gap: 0.5rem; background: oklch(0.96 0.01 146);
+    border: 1px solid var(--line-strong); border-radius: 999px; font-size: 0.82rem; font-weight: 720;
+    padding: 0.45rem 0.75rem; color: var(--ink); white-space: nowrap;
+  }
+  .status::before { content: ""; flex: 0 0 auto; width: 0.5rem; height: 0.5rem; border-radius: 999px; background: var(--primary); }
+  .status[data-tone="working"]::before { background: var(--focus); }
+  .status[data-tone="turn"]::before { background: var(--focus); }
+  .status[data-tone="connected"]::before { background: oklch(0.47 0.077 145); }
+  .status[data-tone="neutral"]::before { background: var(--amber); }
+
+  .inspector-toggle {
+    display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.74rem; font-weight: 740;
+    color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px;
+    padding: 0.35rem 0.6rem; cursor: default;
+  }
+  .inspector-toggle.is-on { color: var(--primary); border-color: var(--line-strong); background: oklch(0.96 0.01 146); }
+  .inspector-toggle svg { width: 0.85rem; height: 0.85rem; }
+
+  /* phase rail */
+  .rail {
+    display: flex; align-items: center; gap: 0.25rem; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; box-shadow: 0 2px 8px var(--shadow); padding: 0.5rem 0.7rem; overflow: hidden;
+  }
+  .station { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 720; color: var(--muted); white-space: nowrap; }
+  .station .pip { width: 0.62rem; height: 0.62rem; border-radius: 999px; background: var(--line-strong); flex: 0 0 auto; }
+  .station--done { color: var(--ink-soft); }
+  .station--done .pip { background: var(--success); position: relative; }
+  .station--active { color: var(--primary); font-weight: 800; }
+  .station--active .pip { background: var(--primary); box-shadow: 0 0 0 3px var(--focus); }
+  .station--next { color: var(--disabled-ink); }
+  .station--next .pip { background: transparent; border: 1.5px dashed var(--disabled-ink); }
+  .rail .conn { flex: 1 1 auto; height: 1.5px; background: var(--line); min-width: 0.5rem; max-width: 1.4rem; }
+  .rail .conn--next { background: transparent; border-top: 1.5px dashed var(--disabled-ink); opacity: 0.7; }
+  .goal-chip {
+    margin-left: auto; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.72rem; font-weight: 740; color: var(--ink-soft); background: var(--surface-rest);
+    border: 1px solid var(--line); border-radius: 999px; padding: 0.3rem 0.6rem;
+  }
+  .goal-chip.is-done { color: var(--success); border-color: oklch(0.45 0.12 150 / 0.4); }
+
+  /* stream */
+  .cc-stream { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.7rem; padding: 0.1rem 0.15rem; }
+
+  .problem-pin { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 2px 8px var(--shadow); flex: 0 0 auto; }
+  .problem-pin.is-expanded { padding: 0.9rem; }
+  .problem-pin.is-sliver { padding: 0.55rem 0.8rem; display: flex; align-items: center; gap: 0.6rem; }
+  .pin-row { display: flex; gap: 0.85rem; }
+  .worksheet {
+    flex: 0 0 92px; height: 92px; border-radius: 9px; border: 1px dashed var(--line-strong); background: var(--surface-rest);
+    padding: 0.5rem; display: flex; flex-direction: column; gap: 0.28rem; justify-content: center; overflow: hidden;
+  }
+  .worksheet i { display: block; height: 5px; border-radius: 999px; background: var(--line-strong); opacity: 0.55; }
+  .worksheet i:nth-child(1){ width: 80%; } .worksheet i:nth-child(2){ width: 95%; } .worksheet i:nth-child(3){ width: 62%; } .worksheet i:nth-child(4){ width: 88%; }
+  .pin-body { min-width: 0; flex: 1; }
+  .pin-kicker { font-size: 0.72rem; font-weight: 740; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; display: flex; gap: 0.5rem; align-items: center; }
+  .pin-q { font-size: 0.98rem; font-weight: 720; line-height: 1.4; color: var(--ink); }
+  .pin-q .term { border-bottom: 1.5px dotted var(--line-strong); cursor: help; }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }
+  .chip { font-size: 0.76rem; font-weight: 700; color: var(--ink-soft); background: var(--surface-rest); border: 1px solid var(--line); border-radius: 999px; padding: 0.25rem 0.55rem; }
+  .pin-sliver-text { font-size: 0.84rem; color: var(--muted); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pin-sliver-text b { color: var(--ink-soft); font-weight: 760; }
+  .parked-flag { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; font-weight: 740; color: var(--amber); }
+
+  /* target chip — the north star */
+  .target-chip {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 0.45rem; flex: 0 0 auto;
+    font-size: 0.82rem; font-weight: 740; border-radius: 999px; padding: 0.4rem 0.75rem;
+  }
+  .target-chip .tlabel { color: var(--muted); font-weight: 700; }
+  .target-chip--empty { border: 1.5px dashed var(--line-strong); color: var(--muted); background: transparent; }
+  .target-chip--framed { border: 1.5px solid var(--focus); background: oklch(0.96 0.02 148); color: var(--ink); box-shadow: 0 0 0 3px oklch(0.82 0.083 148 / 0.25); }
+  .target-chip--complete { border: 1.5px solid oklch(0.45 0.12 150 / 0.5); background: oklch(0.95 0.03 150); color: var(--ink); }
+  .target-chip .star { width: 0.9rem; height: 0.9rem; flex: 0 0 auto; color: currentColor; }
+  .target-chip--complete .star { color: var(--success); }
+
+  /* transcript */
+  .transcript { display: flex; flex-direction: column; gap: 0.6rem; min-height: 0; }
+  .turn { display: flex; gap: 0.55rem; max-width: 100%; }
+  .turn--coach { align-self: stretch; }
+  .turn--child { flex-direction: row-reverse; align-self: flex-end; max-width: 78%; }
+  .echo-mark {
+    flex: 0 0 auto; width: 1.85rem; height: 1.85rem; border-radius: 999px; background: var(--surface-rest);
+    border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
+  }
+  .echo-mark svg { width: 1rem; height: 1rem; color: var(--primary); }
+  .bubble { border-radius: 12px; padding: 0.6rem 0.8rem; font-size: 0.9rem; line-height: 1.45; }
+  .turn--coach .bubble { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+  .turn--child .bubble { background: var(--primary); color: var(--primary-ink); border: 1px solid transparent; }
+  .bubble .meta { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem; }
+  .lang-chip { font-size: 0.66rem; font-weight: 760; letter-spacing: 0.03em; color: var(--muted); background: var(--surface-rest); border: 1px solid var(--line); border-radius: 999px; padding: 0.08rem 0.4rem; }
+  .turn--child .mic { font-size: 0.66rem; opacity: 0.8; }
+
+  /* verifier chip — only on checkable turns */
+  .vchip { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 740; border-radius: 8px; padding: 0.25rem 0.5rem; margin-bottom: 0.4rem; }
+  .vchip svg { width: 0.85rem; height: 0.85rem; flex: 0 0 auto; }
+  .vchip--ok { color: oklch(0.34 0.1 150); background: oklch(0.93 0.045 150); border: 1px solid oklch(0.45 0.12 150 / 0.35); }
+  .vchip--partial { color: #8a4f17; background: oklch(0.93 0.04 70); border: 1px solid color-mix(in srgb, var(--line) 60%, var(--amber) 40%); }
+  .vchip--retry { color: var(--ink-soft); background: var(--surface-rest); border: 1px solid var(--line-strong); }
+  .engagement { font-size: 0.74rem; font-weight: 700; color: var(--muted); font-style: italic; margin-bottom: 0.2rem; }
+
+  /* anchor zone: focus card + voice bar */
+  .cc-anchor { display: flex; flex-direction: column; gap: 0.65rem; flex: 0 0 auto; }
+  .focus-card {
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 14px;
+    box-shadow: 0 6px 18px -10px oklch(0.22 0.035 158 / 0.3), 0 2px 8px var(--shadow); padding: 1rem 1.1rem;
+  }
+  .focus-kicker { font-size: 0.72rem; font-weight: 760; letter-spacing: 0.06em; text-transform: uppercase; color: var(--primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+  .ask { font-size: 1.25rem; font-weight: 780; line-height: 1.3; letter-spacing: -0.005em; color: var(--ink); }
+  .ask .blank { border-bottom: 2.5px solid var(--focus); padding: 0 1.4rem; }
+  .aid { margin-top: 0.7rem; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 700; color: var(--ink-soft); background: var(--surface-rest); border: 1px dashed var(--line-strong); border-radius: 10px; padding: 0.45rem 0.7rem; }
+  .aid svg { width: 0.95rem; height: 0.95rem; color: var(--primary); flex: 0 0 auto; }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.85rem; }
+  .choice-btn { text-align: left; font-size: 0.92rem; font-weight: 740; color: var(--ink); background: var(--surface-rest); border: 1.5px solid var(--line-strong); border-radius: 11px; padding: 0.7rem 0.8rem; cursor: default; line-height: 1.35; }
+  .choice-or { font-size: 0.78rem; color: var(--muted); text-align: center; margin-top: 0.6rem; }
+  .takeaway { margin-top: 0.6rem; background: var(--surface-rest); border: 1px solid var(--line); border-left: 3px solid var(--primary); border-radius: 8px; padding: 0.6rem 0.75rem; font-size: 0.86rem; line-height: 1.45; color: var(--ink-soft); }
+  .takeaway b { color: var(--ink); }
+  .mastery-note { margin-top: 0.55rem; font-size: 0.78rem; color: var(--muted); display: flex; align-items: center; gap: 0.4rem; }
+  .mastery-note .lvl { color: var(--success); font-weight: 740; }
+
+  .voice-bar { display: flex; align-items: center; gap: 0.6rem; }
+  .talk {
+    flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem;
+    background: var(--primary); color: var(--primary-ink); border: 0; border-radius: 11px;
+    min-height: 3.1rem; font-size: 0.98rem; font-weight: 760; cursor: default; padding: 0 1rem;
+  }
+  .talk .mic { width: 1.05rem; height: 1.05rem; }
+  .talk--listening { background: var(--primary); }
+  .wave { display: inline-flex; align-items: center; gap: 2px; height: 1rem; }
+  .wave span { width: 3px; border-radius: 999px; background: var(--primary-ink); opacity: 0.9; animation: wave 1s ease-in-out infinite; }
+  .wave span:nth-child(1){ height: 35%; animation-delay: 0s; } .wave span:nth-child(2){ height: 75%; animation-delay: .12s; }
+  .wave span:nth-child(3){ height: 100%; animation-delay: .24s; } .wave span:nth-child(4){ height: 60%; animation-delay: .36s; }
+  .wave span:nth-child(5){ height: 40%; animation-delay: .48s; }
+  @keyframes wave { 0%,100%{ transform: scaleY(0.5); } 50%{ transform: scaleY(1); } }
+  .talk--wait { background: oklch(0.93 0.013 148); color: var(--muted); position: relative; overflow: hidden; }
+  .talk--wait::after { content: ""; position: absolute; inset: 0; border-radius: 11px; box-shadow: inset 0 0 0 2px var(--focus); opacity: 0.6; animation: breathe 2.4s ease-in-out infinite; }
+  @keyframes breathe { 0%,100%{ opacity: 0.2; } 50%{ opacity: 0.8; } }
+  .vb-btn {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 0.4rem; background: var(--quiet-button); color: var(--ink);
+    border: 0; border-radius: 11px; min-height: 3.1rem; padding: 0 0.85rem; font-size: 0.88rem; font-weight: 740; cursor: default;
+  }
+  .vb-btn svg { width: 0.95rem; height: 0.95rem; }
+  .vb-btn--hint { background: oklch(0.96 0.02 148); color: var(--primary); box-shadow: inset 0 0 0 1.5px var(--focus); }
+  .reassure { font-size: 0.78rem; color: var(--muted); text-align: center; }
+
+  /* inspector overlay */
+  .inspector {
+    position: absolute; top: 0.9rem; right: 0.9rem; bottom: 0.9rem; width: 270px;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px;
+    box-shadow: -18px 0 40px -22px oklch(0.22 0.035 158 / 0.55); padding: 0.85rem; overflow: hidden;
+    display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .insp-head { display: flex; align-items: center; justify-content: space-between; }
+  .insp-head h4 { font-size: 0.82rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
+  .insp-tabs { display: flex; gap: 0.3rem; }
+  .insp-tab { font-size: 0.72rem; font-weight: 740; border-radius: 999px; padding: 0.2rem 0.55rem; border: 1px solid var(--line); color: var(--muted); background: transparent; }
+  .insp-tab.is-on { color: var(--primary); border-color: var(--line-strong); background: oklch(0.96 0.01 146); }
+  .insp-section h5 { font-size: 0.68rem; font-weight: 760; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.45rem; }
+  .insp-row { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.8rem; padding: 0.25rem 0; border-bottom: 1px solid var(--line); }
+  .insp-row span:first-child { color: var(--muted); }
+  .insp-row span:last-child { color: var(--ink); font-weight: 720; text-align: right; }
+  .ladder { display: flex; gap: 0.25rem; }
+  .ladder i { width: 0.7rem; height: 0.7rem; border-radius: 3px; background: var(--surface-rest); border: 1px solid var(--line-strong); }
+  .ladder i.on { background: var(--primary); border-color: var(--primary); }
+  .insp-json { background: oklch(0.96 0.01 146); border: 1px solid var(--line-strong); border-radius: 9px; padding: 0.6rem 0.7rem; font-family: var(--mono); font-size: 0.7rem; line-height: 1.5; color: var(--ink-soft); overflow: auto; white-space: pre; }
+  .insp-json .k { color: var(--primary); } .insp-json .s { color: oklch(0.34 0.1 150); } .insp-json .n { color: var(--amber); }
+
+  .footer-note { margin-top: 3.5rem; padding: 1.2rem 1.3rem; }
+  .footer-note p { font-size: 0.9rem; line-height: 1.55; color: var(--muted); }
+  .footer-note b { color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wave span, .talk--wait::after { animation: none; }
+    .wave span { transform: scaleY(0.8); }
+  }
+  @media (max-width: 560px) {
+    .cc { height: auto; min-height: 600px; }
+    .choices { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">Center column · full tutoring flow</p>
+    <h1>Coach Echo, where the lesson actually happens</h1>
+    <p class="lede">
+      The center column is the stage for one tutoring session, end to end. It is built to make the
+      converged workflow visible to a 7–12-year-old and a watching parent — while making it structurally
+      hard to leak the answer. Everything below uses the app's real sage-green design system; these are
+      proposed states, not shipped code.
+    </p>
+    <div class="byline">
+      <span><strong>Converged design</strong> · Claude (Opus 4.8) × pi (Gemini)</span>
+      <span class="sep"></span>
+      <span>9 states across the flow</span>
+      <span class="sep"></span>
+      <span>Example: a sharing problem, task language Malay, child comfortable in English</span>
+    </div>
+
+    <div class="cards">
+      <div class="note">
+        <span class="tag">Fork 1 · resolved</span>
+        <h3>Warm view by default, machine on a toggle</h3>
+        <p>The child talks to a coach, not a state machine. Phase, support level, verifier and behavior
+        live behind a “Coach view” the child never sees — split into a plain Parent mode and a raw Dev mode.</p>
+      </div>
+      <div class="note">
+        <span class="tag">Fork 2 · resolved</span>
+        <h3>Spine · Stream · Anchor</h3>
+        <p>A slim phase rail on top, the conversation growing in the middle, and one fixed instrument
+        panel at the bottom: the single current ask plus the talk button. Only one ask can ever exist.</p>
+      </div>
+      <div class="note">
+        <span class="tag">Fork 3 · resolved</span>
+        <h3>Voice first, screen as anchor</h3>
+        <p>The child speaks and listens. The screen carries the problem, the one ask, and light captions
+        of the last exchange — enough for a developing reader and a parent to follow, never a wall of text.</p>
+      </div>
+    </div>
+
+    <div class="note legend">
+      <h3>How to read the verifier feedback</h3>
+      <div class="legend-grid">
+        <div class="legend-item"><span class="vchip vchip--ok" style="margin:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span><span><b>Correct</b> — only on checkable claims, always paired with the reason (“because…”).</span></div>
+        <div class="legend-item"><span class="vchip vchip--partial" style="margin:0">◐</span><span><b>Partial</b> — warm amber, names the missing piece, never a failure.</span></div>
+        <div class="legend-item"><span class="vchip vchip--retry" style="margin:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/></svg></span><span><b>Try again</b> — muted, never red, with an instant warm redirect.</span></div>
+        <div class="legend-item"><span class="engagement" style="margin:0">“good thinking”</span><span><b>Open reasoning</b> — “what do you notice?” gets engagement warmth and <b>no</b> correctness mark at all.</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ FRAME 0 — Session Open ============ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="frame-num">00</span>
+      <div class="ftext">
+        <h2>Session open — human before method</h2>
+        <p class="shows">Greets by name, recalls <b>one</b> thing from last time, sets <b>one</b> goal. The goal
+        chip rides the rail all session. No cold start, no “pick your language” quiz.</p>
+      </div>
+    </div>
+    <div class="window">
+      <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="winlabel">Coach Echo — center column</span><span class="winside">left &amp; right sidebars unchanged</span></div>
+      <div class="cc cc--short">
+        <div class="cc-topbar">
+          <div class="brand"><span class="brand-mark"></span><div><h1>Coach Echo</h1><p>Your voice homework coach</p></div></div>
+          <div class="topbar-right">
+            <span class="status" data-tone="connected">Saying hi</span>
+            <span class="inspector-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>Coach view</span>
+          </div>
+        </div>
+        <div class="rail">
+          <div class="station station--active"><span class="pip"></span>Warm-up</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Understand</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Work it out</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Wrap</div>
+        </div>
+        <div class="cc-stream">
+          <div class="problem-pin is-sliver">
+            <span class="pin-sliver-text">Ready when you are — show me today's homework and we'll start.</span>
+          </div>
+          <div class="transcript">
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble">
+                <div class="meta"><span class="lang-chip">EN</span></div>
+                Hi Aisha! Last time, sharing equally got a bit tricky. Today let's get <b>one</b> sharing
+                problem really solid. Sound good?
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cc-anchor">
+          <div class="focus-card">
+            <div class="focus-kicker">Your turn</div>
+            <div class="ask">Ready to start? Tap to talk and say hi 👋</div>
+          </div>
+          <div class="voice-bar">
+            <button class="talk"><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Tap to talk</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FRAME 1 — Capture & Parse ============ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="frame-num">01</span>
+      <div class="ftext">
+        <h2>Capture &amp; parse — get a trustworthy problem</h2>
+        <p class="shows">The problem pin is the <b>hero</b> here: photo, the extracted question, and the numbers
+        it found. Extraction is fallible, so the move is <b>confirm</b>, not solve — and the old “Ask about
+        image” button is gone. The task is in Malay; the child is comfortable in English.</p>
+      </div>
+    </div>
+    <div class="window">
+      <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="winlabel">Coach Echo — center column</span><span class="winside">step 1</span></div>
+      <div class="cc">
+        <div class="cc-topbar">
+          <div class="brand"><span class="brand-mark"></span><div><h1>Coach Echo</h1><p>Your voice homework coach</p></div></div>
+          <div class="topbar-right">
+            <span class="status" data-tone="working">Reading your problem…</span>
+            <span class="inspector-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>Coach view</span>
+          </div>
+        </div>
+        <div class="rail">
+          <div class="station station--done"><span class="pip"></span>Warm-up</div>
+          <div class="conn"></div>
+          <div class="station station--active"><span class="pip"></span>Understand</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Work it out</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Wrap</div>
+          <span class="goal-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>One sharing problem</span>
+        </div>
+        <div class="cc-stream">
+          <div class="problem-pin is-expanded">
+            <div class="pin-kicker">From your photo · I read this <span class="lang-chip">BM detected</span></div>
+            <div class="pin-row">
+              <div class="worksheet"><i></i><i></i><i></i><i></i></div>
+              <div class="pin-body">
+                <div class="pin-q">Aisha ada 24 pelekat. Dia <span class="term" title="share equally · kongsi sama rata · 平分">kongsi sama rata</span> dengan 4 kawan. Berapa pelekat setiap kawan dapat?</div>
+                <div class="chips"><span class="chip">24 pelekat</span><span class="chip">4 kawan</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cc-anchor">
+          <div class="focus-card">
+            <div class="focus-kicker">Your turn</div>
+            <div class="ask">Is this the right question?</div>
+            <div class="aid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg>Tap a button, or read it to me out loud</div>
+          </div>
+          <div class="voice-bar">
+            <button class="talk" style="flex:0 0 auto; background:var(--quiet-button); color:var(--ink)"><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Read it to me</button>
+            <button class="talk"><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>This looks right</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FRAME 2 — Frame the Task (THE GATE) ============ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="frame-num">02</span>
+      <div class="ftext">
+        <h2>Frame the task — the gate <span style="color:var(--muted);font-weight:600">(the screen that earns its keep)</span></h2>
+        <p class="shows">Solving stays out of reach until the child shows they understand. The later stations sit
+        <b>ghosted</b> (“comes next”, no punitive lock); the empty <b>target chip</b> is the north star.
+        Three Reads run one ask at a time, and reasoning turns get <b>engagement warmth, no correctness mark</b>.
+        The bottom shows the <b>adaptive proof</b> in its gentle two-choice form (for an anxious learner).</p>
+      </div>
+    </div>
+    <div class="window">
+      <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="winlabel">Coach Echo — center column</span><span class="winside">step 2 · gate</span></div>
+      <div class="cc">
+        <div class="cc-topbar">
+          <div class="brand"><span class="brand-mark"></span><div><h1>Coach Echo</h1><p>Your voice homework coach</p></div></div>
+          <div class="topbar-right">
+            <span class="status" data-tone="turn">Understanding the question</span>
+            <span class="inspector-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>Coach view</span>
+          </div>
+        </div>
+        <div class="rail">
+          <div class="station station--done"><span class="pip"></span>Warm-up</div>
+          <div class="conn"></div>
+          <div class="station station--active"><span class="pip"></span>Understand</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Work it out</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Wrap</div>
+          <span class="goal-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>One sharing problem</span>
+        </div>
+        <div class="cc-stream">
+          <div class="problem-pin is-sliver">
+            <span class="pin-sliver-text"><b>Sharing problem</b> · Aisha ada 24 pelekat, kongsi dengan 4 kawan…</span>
+            <span class="target-chip target-chip--empty" style="margin-left:auto"><span class="tlabel">We need to find</span> ___</span>
+          </div>
+          <div class="transcript">
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble"><div class="meta"><span class="lang-chip">EN</span></div>Don't solve it yet — what's this story about?</div>
+            </div>
+            <div class="turn turn--child"><div class="bubble">It's Aisha sharing her stickers with friends <span class="mic">🎙</span></div></div>
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble"><div class="engagement">good noticing — you caught the sharing</div>What numbers do we have, and what do they mean?</div>
+            </div>
+            <div class="turn turn--child"><div class="bubble">24 stickers, and 4 friends <span class="mic">🎙</span></div></div>
+          </div>
+        </div>
+        <div class="cc-anchor">
+          <div class="focus-card">
+            <div class="focus-kicker">Last read · say it back <span style="color:var(--muted);text-transform:none;letter-spacing:0;font-weight:600">· gentle form</span></div>
+            <div class="ask">Which one are we trying to find?</div>
+            <div class="choices">
+              <button class="choice-btn">How many stickers <b>each friend</b> gets</button>
+              <button class="choice-btn">How many stickers Aisha <b>started with</b></button>
+            </div>
+            <p class="choice-or">…or tap the mic and say it your own way</p>
+          </div>
+          <div class="voice-bar">
+            <button class="talk talk--wait">Take your time — I'm here</button>
+            <button class="vb-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Talk</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FRAME 3 — Step Loop: your turn ============ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="frame-num">03</span>
+      <div class="ftext">
+        <h2>Step loop — your turn <span style="color:var(--muted);font-weight:600">(the heart, repeats per step)</span></h2>
+        <p class="shows">The gate just unlocked: “Understand” shows a tick, “Work it out” lit up, and the target chip
+        is now <b>framed</b> — the north star for the rest of the problem. A checkable step earned a <b>✓ with a
+        reason</b>. There's exactly one ask, a quiet scaffold aid, the mic in its <b>listening</b> state, and
+        help is always one tap away (“Give me a hint”, “Park this”) — but there is no countdown.</p>
+      </div>
+    </div>
+    <div class="window">
+      <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="winlabel">Coach Echo — center column</span><span class="winside">step 4 · step loop</span></div>
+      <div class="cc">
+        <div class="cc-topbar">
+          <div class="brand"><span class="brand-mark"></span><div><h1>Coach Echo</h1><p>Your voice homework coach</p></div></div>
+          <div class="topbar-right">
+            <span class="status" data-tone="turn">Your turn</span>
+            <span class="inspector-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>Coach view</span>
+          </div>
+        </div>
+        <div class="rail">
+          <div class="station station--done"><span class="pip"></span>Warm-up</div>
+          <div class="conn"></div>
+          <div class="station station--done"><span class="pip"></span>Understand</div>
+          <div class="conn"></div>
+          <div class="station station--active"><span class="pip"></span>Work it out</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Wrap</div>
+          <span class="goal-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>One sharing problem</span>
+        </div>
+        <div class="cc-stream">
+          <div class="problem-pin is-sliver">
+            <span class="pin-sliver-text"><b>Sharing problem</b> · 24 pelekat ÷ 4 kawan</span>
+            <span class="target-chip target-chip--framed" style="margin-left:auto"><svg class="star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg><span class="tlabel">Find:</span> stickers each friend gets</span>
+          </div>
+          <div class="transcript">
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble">Great — what's the very <b>first</b> step? Not the answer, just the first move.</div>
+            </div>
+            <div class="turn turn--child"><div class="bubble">Split the 24 into 4 groups <span class="mic">🎙</span></div></div>
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble">
+                <span class="vchip vchip--ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>That works</span>
+                Yes — sharing equally <b>is</b> dividing, because every friend ends up with the same amount.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cc-anchor">
+          <div class="focus-card">
+            <div class="focus-kicker">One step</div>
+            <div class="ask">Give each friend 1 sticker first. How many stickers is that?</div>
+            <div class="aid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>4 friends · 1 sticker each</div>
+          </div>
+          <div class="voice-bar">
+            <button class="talk talk--listening"><span class="wave"><span></span><span></span><span></span><span></span><span></span></span>Listening…</button>
+            <button class="vb-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-4 10c.8.7 1 1.2 1 2v1h6v-1c0-.8.2-1.3 1-2a6 6 0 0 0-4-10z"/><path d="M9 21h6"/></svg>Hint</button>
+            <button class="vb-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>Park</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FRAME 4 — Step Loop: kind correction ============ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="frame-num">04</span>
+      <div class="ftext">
+        <h2>Step loop — a wrong answer, handled kindly</h2>
+        <p class="shows">A checkable miss gets <b>“try again” — never a red stamp</b> — and an immediate, specific
+        redirect. The wait timer is invisible: after the age-banded pause the mic enters a calm <b>breathing</b>
+        “take your time” state and a <b>hint</b> quietly surfaces. Support has climbed, so the scaffold aid is
+        more concrete. “Park this” is always there so a step can never trap the child.</p>
+      </div>
+    </div>
+    <div class="window">
+      <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="winlabel">Coach Echo — center column</span><span class="winside">step 4 · support rising</span></div>
+      <div class="cc">
+        <div class="cc-topbar">
+          <div class="brand"><span class="brand-mark"></span><div><h1>Coach Echo</h1><p>Your voice homework coach</p></div></div>
+          <div class="topbar-right">
+            <span class="status" data-tone="neutral">Let's look again</span>
+            <span class="inspector-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>Coach view</span>
+          </div>
+        </div>
+        <div class="rail">
+          <div class="station station--done"><span class="pip"></span>Warm-up</div>
+          <div class="conn"></div>
+          <div class="station station--done"><span class="pip"></span>Understand</div>
+          <div class="conn"></div>
+          <div class="station station--active"><span class="pip"></span>Work it out</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Wrap</div>
+          <span class="goal-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>One sharing problem</span>
+        </div>
+        <div class="cc-stream">
+          <div class="problem-pin is-sliver">
+            <span class="pin-sliver-text"><b>Sharing problem</b> · 24 pelekat ÷ 4 kawan</span>
+            <span class="target-chip target-chip--framed" style="margin-left:auto"><svg class="star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg><span class="tlabel">Find:</span> stickers each friend gets</span>
+          </div>
+          <div class="transcript">
+            <div class="turn turn--child"><div class="bubble">24? <span class="mic">🎙</span></div></div>
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble">
+                <span class="vchip vchip--retry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/></svg>Let's look again</span>
+                Not quite — 24 is <b>all</b> the stickers. Right now we're only giving out 1 each. How many friends get one?
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cc-anchor">
+          <div class="focus-card">
+            <div class="focus-kicker">One step · take your time</div>
+            <div class="ask">How many is 1 + 1 + 1 + 1?</div>
+            <div class="aid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-4 10c.8.7 1 1.2 1 2v1h6v-1c0-.8.2-1.3 1-2a6 6 0 0 0-4-10z"/><path d="M9 21h6"/></svg>Hint: point to each friend as you count — 1, 2, 3, 4.</div>
+          </div>
+          <div class="voice-bar">
+            <button class="talk talk--wait">Take your time — I'm here</button>
+            <button class="vb-btn vb-btn--hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-4 10c.8.7 1 1.2 1 2v1h6v-1c0-.8.2-1.3 1-2a6 6 0 0 0-4-10z"/><path d="M9 21h6"/></svg>Another hint</button>
+            <button class="vb-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>Park</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FRAME 5 — Answer Check ============ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="frame-num">05</span>
+      <div class="ftext">
+        <h2>Answer check — back to the framed goal</h2>
+        <p class="shows">The loop closes where it opened. The pin re-expands, the target chip goes <b>complete</b>,
+        and the check is a sanity test (does 6 × 4 = 24?) plus the <b>required output language</b>: the worksheet
+        is Malay, so the final sentence must be Malay even though the child reasoned in English. The win is tied
+        to the child's reasoning, not Echo's. <span style="color:var(--ink-soft)">(Memory write — “what helped
+        you figure it out?” — happens right after, then the problem is done; no forced second problem.)</span></p>
+      </div>
+    </div>
+    <div class="window">
+      <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="winlabel">Coach Echo — center column</span><span class="winside">step 5 · answer check</span></div>
+      <div class="cc">
+        <div class="cc-topbar">
+          <div class="brand"><span class="brand-mark"></span><div><h1>Coach Echo</h1><p>Your voice homework coach</p></div></div>
+          <div class="topbar-right">
+            <span class="status" data-tone="working">Checking our answer</span>
+            <span class="inspector-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>Coach view</span>
+          </div>
+        </div>
+        <div class="rail">
+          <div class="station station--done"><span class="pip"></span>Warm-up</div>
+          <div class="conn"></div>
+          <div class="station station--done"><span class="pip"></span>Understand</div>
+          <div class="conn"></div>
+          <div class="station station--active"><span class="pip"></span>Work it out</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Wrap</div>
+          <span class="goal-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>One sharing problem</span>
+        </div>
+        <div class="cc-stream">
+          <div class="problem-pin is-expanded">
+            <div class="pin-kicker">The problem <span class="target-chip target-chip--complete" style="margin-left:auto"><svg class="star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg><span class="tlabel">Found:</span> 6 each</span></div>
+            <div class="pin-row">
+              <div class="worksheet"><i></i><i></i><i></i><i></i></div>
+              <div class="pin-body">
+                <div class="pin-q">Aisha ada 24 pelekat. Dia kongsi sama rata dengan 4 kawan. Berapa pelekat setiap kawan dapat?</div>
+                <div class="chips"><span class="chip">24 ÷ 4</span><span class="chip">= 6</span><span class="chip">check: 6 × 4 = 24 ✓</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="transcript">
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble">You've handed them all out — how many did <b>each friend</b> end up with?</div>
+            </div>
+            <div class="turn turn--child"><div class="bubble">6 each! <span class="mic">🎙</span></div></div>
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble">Let's be sure it answers the question — what's 6 × 4?</div>
+            </div>
+            <div class="turn turn--child"><div class="bubble">24 — same as we started with! <span class="mic">🎙</span></div></div>
+          </div>
+        </div>
+        <div class="cc-anchor">
+          <div class="focus-card">
+            <div class="focus-kicker">Say the answer · in Bahasa Melayu <span class="lang-chip" style="text-transform:none;letter-spacing:0">answer in BM</span></div>
+            <div class="ask">Setiap kawan dapat <span class="blank"></span> pelekat.</div>
+          </div>
+          <div class="voice-bar">
+            <button class="talk"><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Tap to say your answer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FRAME 6 — Transfer check ============ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="frame-num">06</span>
+      <div class="ftext">
+        <h2>Transfer check — on your own</h2>
+        <p class="shows">Solving <b>with help is evidence, not proof</b>. Near the close, one fresh item with
+        <b>reduced help</b>: the hint and park buttons are <b>gone</b>, and the room takes an “on your own” tone
+        (a fresh item still opens with a quick “what's it asking?” micro-orient — not depicted here).
+        Passing this is what promotes mastery. It's fully skippable if the child is tired — mastery just stays
+        “developing”, no shame.</p>
+      </div>
+    </div>
+    <div class="window">
+      <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="winlabel">Coach Echo — center column</span><span class="winside">step 7 · transfer</span></div>
+      <div class="cc cc--short">
+        <div class="cc-topbar">
+          <div class="brand"><span class="brand-mark"></span><div><h1>Coach Echo</h1><p>Your voice homework coach</p></div></div>
+          <div class="topbar-right">
+            <span class="status" data-tone="turn">Your turn — on your own</span>
+            <span class="inspector-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>Coach view</span>
+          </div>
+        </div>
+        <div class="rail">
+          <div class="station station--done"><span class="pip"></span>Warm-up</div>
+          <div class="conn"></div>
+          <div class="station station--done"><span class="pip"></span>Understand</div>
+          <div class="conn"></div>
+          <div class="station station--active"><span class="pip"></span>Work it out</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Wrap</div>
+          <span class="goal-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>One sharing problem</span>
+        </div>
+        <div class="cc-stream">
+          <div class="problem-pin is-expanded" style="border-style:solid; border-color:var(--focus); box-shadow:0 0 0 3px oklch(0.82 0.083 148 / 0.25)">
+            <div class="pin-kicker">Try one on your own</div>
+            <div class="pin-q">18 sweets shared equally by 3 kids. How many does each kid get?</div>
+          </div>
+          <div class="transcript">
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble">You've got the hang of sharing. Want to try one all by yourself to lock it in?</div>
+            </div>
+          </div>
+        </div>
+        <div class="cc-anchor">
+          <div class="focus-card">
+            <div class="focus-kicker">On your own · I'll just listen</div>
+            <div class="ask">Take it from the top — what's the first step here?</div>
+          </div>
+          <div class="voice-bar">
+            <button class="talk"><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Tap to talk</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FRAME 7 — Wrap-up ============ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="frame-num">07</span>
+      <div class="ftext">
+        <h2>Wrap-up — the child names what they learned</h2>
+        <p class="shows">The child summarizes, Echo assigns <b>one</b> small practice task and previews next time. The
+        goal chip is marked achieved. A mastery change is logged for the parent (subtle), never announced to the
+        child as a level-up. This summary becomes the input to the next session's open.</p>
+      </div>
+    </div>
+    <div class="window">
+      <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="winlabel">Coach Echo — center column</span><span class="winside">step 8 · wrap</span></div>
+      <div class="cc cc--short">
+        <div class="cc-topbar">
+          <div class="brand"><span class="brand-mark"></span><div><h1>Coach Echo</h1><p>Your voice homework coach</p></div></div>
+          <div class="topbar-right">
+            <span class="status" data-tone="connected">Wrapping up</span>
+            <span class="inspector-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>Coach view</span>
+          </div>
+        </div>
+        <div class="rail">
+          <div class="station station--done"><span class="pip"></span>Warm-up</div>
+          <div class="conn"></div>
+          <div class="station station--done"><span class="pip"></span>Understand</div>
+          <div class="conn"></div>
+          <div class="station station--done"><span class="pip"></span>Work it out</div>
+          <div class="conn"></div>
+          <div class="station station--active"><span class="pip"></span>Wrap</div>
+          <span class="goal-chip is-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>Goal done</span>
+        </div>
+        <div class="cc-stream">
+          <div class="transcript">
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble">Before we stop — what did we figure out today?</div>
+            </div>
+            <div class="turn turn--child"><div class="bubble">Sharing equally is the same as dividing into equal groups <span class="mic">🎙</span></div></div>
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble">Exactly that. You did the thinking today — nice work, Aisha.</div>
+            </div>
+          </div>
+        </div>
+        <div class="cc-anchor">
+          <div class="focus-card">
+            <div class="focus-kicker">For next time</div>
+            <div class="ask" style="font-size:1.1rem">One to keep it sharp before we meet again</div>
+            <div class="takeaway"><b>Practice:</b> one sharing problem — try 20 ÷ 5. &nbsp; <b>Next time:</b> we'll share bigger numbers.</div>
+            <div class="mastery-note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--success)"><path d="M5 13l4 4L19 7"/></svg>Saved for a grown-up: <span class="lvl">Sharing equally → developing</span></div>
+          </div>
+          <div class="voice-bar">
+            <button class="talk">End session</button>
+            <button class="vb-btn">Start another</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FRAME 8 — Inspector overlay ============ -->
+  <section class="frame">
+    <div class="frame-caption">
+      <span class="frame-num">08</span>
+      <div class="ftext">
+        <h2>Coach view — the machine, on demand</h2>
+        <p class="shows">Toggled off by default and never in the child's face. <b>Parent mode</b> reads in plain
+        language — phase, whether the gate passed, a 5-rung support ladder, the last check, how the child seems,
+        and skill status. <b>Dev mode</b> adds the raw <code>TutorAction</code> and timer state. This is where the
+        whole FSM is visible without polluting the lesson.</p>
+      </div>
+    </div>
+    <div class="window">
+      <div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="winlabel">Coach Echo — center column</span><span class="winside">inspector open · over the step loop</span></div>
+      <div class="cc">
+        <div class="cc-topbar">
+          <div class="brand"><span class="brand-mark"></span><div><h1>Coach Echo</h1><p>Your voice homework coach</p></div></div>
+          <div class="topbar-right">
+            <span class="status" data-tone="turn">Your turn</span>
+            <span class="inspector-toggle is-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>Coach view · on</span>
+          </div>
+        </div>
+        <div class="rail">
+          <div class="station station--done"><span class="pip"></span>Warm-up</div>
+          <div class="conn"></div>
+          <div class="station station--done"><span class="pip"></span>Understand</div>
+          <div class="conn"></div>
+          <div class="station station--active"><span class="pip"></span>Work it out</div>
+          <div class="conn conn--next"></div>
+          <div class="station station--next"><span class="pip"></span>Wrap</div>
+        </div>
+        <div class="cc-stream">
+          <div class="problem-pin is-sliver">
+            <span class="pin-sliver-text"><b>Sharing problem</b> · 24 pelekat ÷ 4 kawan</span>
+            <span class="target-chip target-chip--framed" style="margin-left:auto"><svg class="star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg><span class="tlabel">Find:</span> stickers each friend gets</span>
+          </div>
+          <div class="transcript">
+            <div class="turn turn--coach">
+              <span class="echo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h2l2-6 4 14 3-9 2 4h3"/></svg></span>
+              <div class="bubble">Give each friend 1 sticker first. How many stickers is that?</div>
+            </div>
+          </div>
+        </div>
+        <div class="cc-anchor">
+          <div class="focus-card">
+            <div class="focus-kicker">One step</div>
+            <div class="ask" style="font-size:1.05rem">How many is 1 + 1 + 1 + 1?</div>
+          </div>
+          <div class="voice-bar">
+            <button class="talk talk--wait">Take your time — I'm here</button>
+            <button class="vb-btn vb-btn--hint">Hint</button>
+          </div>
+        </div>
+
+        <!-- inspector drawer -->
+        <aside class="inspector">
+          <div class="insp-head">
+            <h4>Coach view</h4>
+            <div class="insp-tabs"><span class="insp-tab is-on">Parent</span><span class="insp-tab">Dev</span></div>
+          </div>
+          <div class="insp-section">
+            <h5>Right now</h5>
+            <div class="insp-row"><span>Phase</span><span>Working out a step</span></div>
+            <div class="insp-row"><span>Understanding</span><span>Passed ✓</span></div>
+            <div class="insp-row"><span>Last check</span><span>Try again</span></div>
+            <div class="insp-row"><span>Aisha seems</span><span>Focused</span></div>
+          </div>
+          <div class="insp-section">
+            <h5>Help level <span style="font-weight:600;text-transform:none;letter-spacing:0">(3 of 5)</span></h5>
+            <div class="ladder"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+          </div>
+          <div class="insp-section">
+            <h5>Dev · TutorAction</h5>
+            <div class="insp-json"><span class="k">phase</span>: <span class="s">"step_loop"</span>
+<span class="k">move</span>: <span class="s">"scaffold_hint"</span>
+<span class="k">supportLevel</span>: <span class="n">3</span>
+<span class="k">gate</span>: <span class="s">"complete"</span>
+<span class="k">verifier</span>: {
+  <span class="k">status</span>: <span class="s">"incorrect"</span>,
+  <span class="k">confidence</span>: <span class="s">"high"</span> }
+<span class="k">behavior</span>: <span class="s">"regulated"</span>
+<span class="k">waitPolicy</span>: { <span class="k">hintAfterMs</span>: <span class="n">60000</span> }
+<span class="k">language</span>: { <span class="k">spoken</span>: <span class="s">"en"</span>,
+  <span class="k">targetOutput</span>: <span class="s">"ms"</span> }</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <div class="note footer-note">
+    <p><b>One open call for the next iteration.</b> The gate (frame 02) is the one place the two designs split.
+    A literal padlock was rejected — it can feel punitive to an anxious child, or a challenge to “break” for a
+    rushing one. The shipped reading uses soft “comes next” ghosting plus the empty target chip, with the
+    rewarding “lights up” moment when the gate passes (frame 03). The recommended refinement: make the
+    <b>empty target chip the visible lock</b> — enlarge “We need to find ___” as the hero of frame 02 so filling
+    it clearly <i>is</i> the unlock, since ghosting alone may read as “progress” rather than “locked”.
+    Everything else converged.</p>
+  </div>
+</div>
