@@ -1,0 +1,694 @@
+<title>Coach Echo — Tutoring Workflow</title>
+<style>
+  :root {
+    --ground: #1B2823;
+    --surface: #233530;
+    --surface-2: #2C403A;
+    --text: #E9F0EA;
+    --muted: #9CB2A6;
+    --line: rgba(233, 240, 234, 0.10);
+    --line-strong: rgba(233, 240, 234, 0.18);
+    --accent: #5DBE92;      /* zen green — go / spine / enforcement */
+    --amber: #E2A33C;       /* wait / caution */
+    --clay: #CE8276;        /* stuck / park-it */
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --maxw: 1080px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 28px; }
+
+  /* ---------- typography ---------- */
+  h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -0.015em; line-height: 1.15; }
+  p { margin: 0; }
+  strong { font-weight: 650; color: #F4F8F4; }
+  em { font-style: italic; color: #DCE7DE; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .mono { font-family: var(--font-mono); }
+
+  /* ---------- hero ---------- */
+  .hero { position: relative; padding: 92px 0 64px; overflow: hidden; }
+  .lamp {
+    position: absolute; top: -260px; left: 50%; transform: translateX(-50%);
+    width: 900px; height: 620px; pointer-events: none;
+    background: radial-gradient(closest-side, rgba(93, 190, 146, 0.16), rgba(93, 190, 146, 0.04) 55%, transparent 75%);
+  }
+  .hero-inner { position: relative; }
+  .hero h1 {
+    font-size: clamp(34px, 4.6vw, 56px);
+    max-width: 16ch;
+    margin: 20px 0 0;
+  }
+  .hero h1 .soft { color: var(--muted); }
+  .lede {
+    margin-top: 22px; max-width: 60ch; font-size: 18px; color: #D4E0D6;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+  .chip {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em;
+    color: var(--muted); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px;
+  }
+  .chip b { color: var(--text); font-weight: 600; }
+
+  /* ---------- three-layer thesis ---------- */
+  .layers { margin-top: 44px; display: grid; gap: 10px; max-width: 720px; }
+  .layer {
+    display: grid; grid-template-columns: 56px 1fr; align-items: center; gap: 18px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--accent); border-radius: 12px; padding: 16px 20px;
+  }
+  .layer .ln { font-family: var(--font-mono); font-size: 22px; color: var(--accent); font-weight: 600; }
+  .layer .lt { font-size: 18px; font-weight: 650; }
+  .layer .ld { color: var(--muted); font-size: 15px; }
+  .layer-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .order-note {
+    margin-top: 14px; font-family: var(--font-mono); font-size: 13px; color: var(--muted);
+  }
+  .order-note .warn { color: var(--amber); }
+
+  /* ---------- section scaffolding ---------- */
+  section { padding: 56px 0; border-top: 1px solid var(--line); }
+  .sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 30px; flex-wrap: wrap; }
+  .sec-head h2 { font-size: clamp(24px, 2.6vw, 32px); }
+  .sec-head .note { color: var(--muted); font-size: 15px; }
+
+  /* ---------- invariants (a SET, no sequence numbers) ---------- */
+  .inv-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .inv {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px 22px; display: grid; grid-template-columns: 26px 1fr; gap: 14px;
+  }
+  .inv .tick {
+    width: 22px; height: 22px; border-radius: 6px; margin-top: 2px;
+    background: rgba(93,190,146,0.14); border: 1px solid rgba(93,190,146,0.4);
+    color: var(--accent); font-family: var(--font-mono); font-size: 13px;
+    display: grid; place-items: center; font-weight: 700;
+  }
+  .inv h3 { font-size: 16px; margin-bottom: 5px; }
+  .inv p { color: var(--muted); font-size: 14.5px; }
+
+  /* ---------- flow rail ---------- */
+  .rail {
+    display: flex; align-items: stretch; gap: 14px; flex-wrap: wrap;
+  }
+  .zone {
+    border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; background: var(--surface);
+    display: flex; flex-direction: column; gap: 12px; min-width: 0;
+  }
+  .zone-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .zone.core { flex: 1 1 460px; border-color: var(--line-strong); background: var(--surface-2); }
+  .zone.bookend { flex: 0 1 200px; }
+  .nodes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .node {
+    font-family: var(--font-mono); font-size: 13px; color: var(--text);
+    background: var(--ground); border: 1px solid var(--line); border-radius: 9px;
+    padding: 9px 11px; display: flex; align-items: center; gap: 8px; min-width: 0;
+  }
+  .node .num { color: var(--muted); font-weight: 600; }
+  .node.gate { border-color: rgba(93,190,146,0.5); }
+  .node.gate .num, .node.loop .num { color: var(--accent); }
+  .node.loop { border-color: rgba(93,190,146,0.5); }
+  .node .badge { color: var(--accent); font-size: 11px; letter-spacing: 0.06em; }
+  .arrow { color: var(--muted); font-family: var(--font-mono); }
+
+  /* ---------- steps ---------- */
+  .steps { display: grid; gap: 14px; }
+  .step {
+    display: grid; grid-template-columns: 84px 1fr; gap: 24px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+    padding: 24px 26px;
+  }
+  .step.enforce { border-color: rgba(93,190,146,0.32); background: linear-gradient(180deg, rgba(93,190,146,0.05), transparent 60%), var(--surface); }
+  .step-num { font-family: var(--font-mono); font-size: 40px; font-weight: 600; color: var(--surface-2); line-height: 1; }
+  .step.enforce .step-num { color: var(--accent); }
+  .step-kicker { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 9px; }
+  .step.enforce .step-kicker { color: var(--accent); }
+  .step h3 { font-size: 20px; margin-bottom: 9px; }
+  .step .body { color: #CFDCD1; font-size: 15px; }
+  .step .body p + p { margin-top: 11px; }
+
+  .tag {
+    display: inline-block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
+    padding: 3px 9px; border-radius: 6px; border: 1px solid var(--line-strong); color: var(--muted);
+    margin-left: 8px; vertical-align: middle;
+  }
+  .tag.enf { color: var(--accent); border-color: rgba(93,190,146,0.4); background: rgba(93,190,146,0.08); }
+
+  /* ---------- tables ---------- */
+  .scroll-x { overflow-x: auto; margin-top: 16px; border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 420px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--ground); }
+  tbody tr:last-child td { border-bottom: none; }
+  td .k { font-weight: 650; color: var(--text); }
+  td.state-warn .k { color: var(--amber); }
+  td.state-clay .k { color: var(--clay); }
+
+  /* ---------- step loop micro-diagram ---------- */
+  .loopline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
+  .lchip { font-family: var(--font-mono); font-size: 12.5px; padding: 7px 10px; border-radius: 8px; background: var(--ground); border: 1px solid var(--line); }
+  .lchip.k { border-color: rgba(93,190,146,0.45); color: var(--accent); }
+  .loop-back { font-family: var(--font-mono); font-size: 12px; color: var(--accent); margin-top: 12px; }
+
+  .floor { display: grid; gap: 10px; margin-top: 18px; }
+  .floor .fr { display: grid; grid-template-columns: 130px 1fr; gap: 16px; padding: 14px 16px; background: var(--ground); border: 1px solid var(--line); border-radius: 10px; }
+  .floor .fr .lbl { font-family: var(--font-mono); font-size: 12px; color: var(--accent); letter-spacing: 0.04em; }
+  .floor .fr.clay .lbl { color: var(--clay); }
+  .floor .fr p { color: var(--muted); font-size: 14px; }
+
+  /* ---------- discipline highlight ---------- */
+  .disc { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+  .disc .d { background: var(--surface); border: 1px solid rgba(93,190,146,0.28); border-radius: 14px; padding: 20px; }
+  .disc .d .n { font-family: var(--font-mono); font-size: 13px; color: var(--accent); }
+  .disc .d h3 { font-size: 16px; margin: 8px 0 6px; }
+  .disc .d p { color: var(--muted); font-size: 14px; }
+
+  /* ---------- settled vs validate ---------- */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .col { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; }
+  .col.validate { border-color: rgba(226,163,60,0.3); }
+  .col h3 { font-size: 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .col h3 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+  .col.validate h3 .dot { background: var(--amber); }
+  .col ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14.5px; }
+  .col li { margin-bottom: 7px; }
+
+  /* ---------- footer ---------- */
+  footer { border-top: 1px solid var(--line); padding: 40px 0 64px; }
+  .docs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
+  .doc { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .doc .dl { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.06em; }
+  .doc .dn { font-size: 14.5px; margin-top: 5px; color: var(--text); font-weight: 600; }
+  .doc.here { border-color: rgba(93,190,146,0.4); }
+  .doc.here .dl { color: var(--accent); }
+  .foot-meta { margin-top: 30px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+  .step:hover, .inv:hover, .disc .d:hover { transition: border-color 0.18s ease; border-color: var(--line-strong); }
+
+  /* languages section */
+  .callout { background: linear-gradient(180deg, rgba(93,190,146,0.08), transparent), var(--surface); border: 1px solid rgba(93,190,146,0.32); border-left: 3px solid var(--accent); border-radius: 12px; padding: 18px 22px; margin-bottom: 26px; }
+  .callout .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; color: var(--accent); margin-bottom: 8px; }
+  .callout p { font-size: 16.5px; color: #DCE7DE; }
+  h3.sub { font-size: 16px; margin: 0 0 8px; }
+  .aside { color: var(--muted); font-size: 14px; margin-top: 12px; }
+  .col.lang { border-color: rgba(226,163,60,0.3); }
+  .col.lang h3 .dot { background: var(--amber); }
+  .notes-list { margin: 16px 0 0; padding-left: 18px; color: var(--muted); font-size: 14.5px; }
+  .notes-list li { margin-bottom: 8px; }
+  .notes-list .verify, .notes-list .verify strong { color: var(--amber); }
+  .inv.span2 { grid-column: 1 / -1; border-left: 3px solid var(--accent); }
+
+  /* architecture — from process to system */
+  .principle { font-size: 17px; }
+  .arch-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-top: 10px; }
+  .acard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+  .acard .ak { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+  .acard h3 { font-size: 16px; margin: 9px 0 7px; }
+  .acard p { color: var(--muted); font-size: 14px; }
+  .acard .gap { margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--line); font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .acard .gap .now { color: var(--clay); }
+  .acard .gap .tgt { color: var(--accent); }
+  .buildorder { display: grid; gap: 8px; margin-top: 16px; }
+  .bo { display: grid; grid-template-columns: 38px 1fr; gap: 16px; align-items: baseline; padding: 13px 16px; background: var(--ground); border: 1px solid var(--line); border-radius: 10px; }
+  .bo .bn { font-family: var(--font-mono); font-size: 14px; color: var(--accent); font-weight: 600; }
+  .bo p { color: var(--muted); font-size: 14px; }
+  .acard:hover, .bo:hover { transition: border-color 0.18s ease; border-color: var(--line-strong); }
+
+  @media (max-width: 760px) {
+    .inv-grid, .disc, .split, .docs, .arch-grid { grid-template-columns: 1fr; }
+    .step { grid-template-columns: 1fr; gap: 12px; }
+    .step-num { font-size: 30px; }
+    .layer { grid-template-columns: 40px 1fr; gap: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<header class="hero">
+  <div class="lamp" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <div class="eyebrow">Coach Echo · Tutoring Workflow</div>
+    <h1>Withholding the answer, <span class="soft">on purpose.</span></h1>
+    <p class="lede">
+      The model has the answer instantly. The whole product is the discipline around it —
+      a fixed process that makes a child understand, attempt, and explain before anything gets solved.
+      This is that process — what a learner moves through for one homework problem, the rules that never bend, and the system that enforces them.
+    </p>
+    <div class="chips">
+      <span class="chip"><b>Converged design</b> · Claude × Codex</span>
+      <span class="chip">Ages <b>7–12</b></span>
+      <span class="chip">Voice-first</span>
+      <span class="chip">Malay · 中文 · English</span>
+      <span class="chip mono">9 steps · 7 invariants</span>
+    </div>
+
+    <div class="layers" role="list" aria-label="Three layers of tutoring, in order">
+      <div class="layer" role="listitem">
+        <span class="ln">1</span>
+        <span><span class="layer-row"><span class="lt">Human</span></span><span class="ld">Safe, known, not judged.</span></span>
+      </div>
+      <div class="layer" role="listitem">
+        <span class="ln">2</span>
+        <span><span class="layer-row"><span class="lt">Meaning</span></span><span class="ld">“What is this actually asking?”</span></span>
+      </div>
+      <div class="layer" role="listitem">
+        <span class="ln">3</span>
+        <span><span class="layer-row"><span class="lt">Method</span></span><span class="ld">One step at a time, with the child doing the work.</span></span>
+      </div>
+    </div>
+    <p class="order-note">always in this order &nbsp;·&nbsp; skip <span class="warn">Meaning</span> → guessing &nbsp;·&nbsp; skip <span class="warn">Human</span> → resistance</p>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Invariants</h2>
+        <span class="note">The rules the system enforces in every step — never left to the model’s discretion.</span>
+      </div>
+      <div class="inv-grid">
+        <div class="inv"><span class="tick">✓</span><span><h3>Never hand over the path</h3><p>No full solution and no final answer before the child has done the cognitive work.</p></span></div>
+        <div class="inv"><span class="tick">✓</span><span><h3>The comprehension gate is hard</h3><p>Solving stays locked until the child shows they understand the question — but <em>how</em> they prove it flexes with age and mood.</p></span></div>
+        <div class="inv"><span class="tick">✓</span><span><h3>One demand per turn</h3><p>Ask exactly one thing, then stop and wait. No running ahead of the student.</p></span></div>
+        <div class="inv"><span class="tick">✓</span><span><h3>A separate judge of “correct”</h3><p>Correctness comes from a verifier, only on checkable claims. Open reasoning is judged by engagement, so exploring is never marked wrong.</p></span></div>
+        <div class="inv"><span class="tick">✓</span><span><h3>Mistakes are information</h3><p>Praise the process, never humiliate, and treat “I don’t know” as a useful signal — not a failure.</p></span></div>
+        <div class="inv"><span class="tick">✓</span><span><h3>“Just tell me” → reframed</h3><p>A demand for the answer is redirected into framing the task, never refused coldly.</p></span></div>
+        <div class="inv span2"><span class="tick">✓</span><span><h3>Speak the child's languages</h3><p>Match the task's language for subject terms and required output; mirror the child's comfortable language — Malay, Chinese, or English — for rapport and scaffolding; default to English when uncertain; treat code-switching (Manglish / rojak) as normal, not a mistake. <a href="#languages">See Languages →</a></p></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>The shape</h2>
+        <span class="note">Steps 0 &amp; 8 run once per session. Steps 1–6 repeat per problem. Step 7 runs once, near close.</span>
+      </div>
+      <div class="rail">
+        <div class="zone bookend">
+          <span class="zone-label">Session open</span>
+          <div class="nodes"><span class="node"><span class="num">0</span> Connect &amp; set one goal</span></div>
+        </div>
+        <div class="zone core">
+          <span class="zone-label">Per-problem core · repeats</span>
+          <div class="nodes">
+            <span class="node"><span class="num">1</span> Capture</span>
+            <span class="arrow">→</span>
+            <span class="node gate"><span class="num">2</span> Frame the task <span class="badge">GATE</span></span>
+            <span class="arrow">→</span>
+            <span class="node"><span class="num">3</span> First step</span>
+            <span class="arrow">→</span>
+            <span class="node loop"><span class="num">4</span> Step loop <span class="badge">↻</span></span>
+            <span class="arrow">→</span>
+            <span class="node"><span class="num">5</span> Answer check</span>
+            <span class="arrow">→</span>
+            <span class="node"><span class="num">6</span> Remember</span>
+          </div>
+        </div>
+        <div class="zone bookend">
+          <span class="zone-label">Near close</span>
+          <div class="nodes">
+            <span class="node gate"><span class="num">7</span> Transfer <span class="badge">PROOF</span></span>
+            <span class="node"><span class="num">8</span> Wrap-up</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>The steps</h2>
+        <span class="note">Numbered because order carries meaning. <span class="mono" style="color:var(--accent)">Green</span> = where the discipline is enforced.</span>
+      </div>
+      <div class="steps">
+
+        <div class="step">
+          <div class="step-num">0</div>
+          <div>
+            <div class="step-kicker">Once per session · human before method</div>
+            <h3>Session open</h3>
+            <div class="body">
+              <p>Greet by name, recall one relevant thing from last time (“last time, regrouping tripped you up”), normalize mistakes, and set <strong>one</strong> goal. If behavior spikes later, do a <em>reset</em> — return to something they can do — not another warm-up.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-kicker">Per problem</div>
+            <h3>Capture &amp; parse</h3>
+            <div class="body">
+              <p>The child shares the problem by image, voice, or text. Extraction reads the text, <strong>problem type</strong>, givens, the unknown, any diagram, and a <strong>confidence</strong> score. On low confidence, ask the child to confirm or read it aloud rather than building on a bad parse.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step enforce">
+          <div class="step-num">2</div>
+          <div>
+            <div class="step-kicker">Per problem · the gate</div>
+            <h3>Frame the task <span class="tag enf">enforced</span></h3>
+            <div class="body">
+              <p>Before any solving, the child identifies <em>what success looks like</em>. This is the general form of “identify the question” — and the check branches by problem type.</p>
+              <div class="scroll-x">
+                <table>
+                  <thead><tr><th>Problem type</th><th>Framing check</th></tr></thead>
+                  <tbody>
+                    <tr><td><span class="k">Word problem</span></td><td>The Three Reads — (1) what’s the situation? (2) what quantities, and how related? (3) what exactly are we asked to find?</td></tr>
+                    <tr><td><span class="k">Equation</span></td><td>“What are we solving for? What does the <span class="mono">=</span> tell us? What will a finished answer look like?”</td></tr>
+                    <tr><td><span class="k">Geometry / diagram</span></td><td>“What are we finding? What facts are given? Which parts of the diagram matter?”</td></tr>
+                    <tr><td><span class="k">Computation</span></td><td>“What operation or form is asked? Estimate — what kind of answer makes sense?”</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p><strong>Pass condition:</strong> the child produces or selects a valid <em>“We need to find ___.”</em> The gate never opens without participation — but the form of proof adapts:</p>
+              <div class="scroll-x">
+                <table>
+                  <thead><tr><th>Child’s state</th><th>How they may pass</th></tr></thead>
+                  <tbody>
+                    <tr><td class="state-warn"><span class="k">Anxious / shut down</span></td><td>Choose between two restatements, fill one blank, point/tap, or co-restate with the tutor.</td></tr>
+                    <tr><td><span class="k">Steady</span></td><td>State the “We need to find ___” sentence in their own words.</td></tr>
+                    <tr><td class="state-clay"><span class="k">Rushing</span></td><td>The stricter version — full restatement <strong>plus</strong> “show me why that’s what it’s asking.”</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="margin-top:14px;color:var(--muted)"><span class="mono" style="color:var(--accent)">2b · conditional</span> — Activate prior knowledge <em>only</em> when framing reveals a missing tool, memory flags a relevant past misconception, or the child is stuck and needs a bridge. Otherwise skip straight to action; stacking gates is what triggers shutdown.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <div class="step-kicker">Per problem</div>
+            <h3>Plan only the first step</h3>
+            <div class="body">
+              <p>Elicit the first <em>tiny</em> step — “what’s the very first step, not the answer?” Full-path planning is forbidden. If the child can’t propose one, the tutor models a single micro-step (“I’ll start the first move, then you take the next”), then hands control back.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step enforce">
+          <div class="step-num">4</div>
+          <div>
+            <div class="step-kicker">Per problem · the heart · repeats per step</div>
+            <h3>The step loop <span class="tag enf">enforced</span></h3>
+            <div class="body">
+              <div class="loopline">
+                <span class="lchip">Elicit</span><span class="arrow">→</span>
+                <span class="lchip">Wait</span><span class="arrow">→</span>
+                <span class="lchip">Scaffold</span><span class="arrow">→</span>
+                <span class="lchip">Act</span><span class="arrow">→</span>
+                <span class="lchip k">Verify</span><span class="arrow">→</span>
+                <span class="lchip">Explain</span><span class="arrow">→</span>
+                <span class="lchip">Feedback</span><span class="arrow">→</span>
+                <span class="lchip">Fade</span><span class="arrow">→</span>
+                <span class="lchip k">Advance</span>
+              </div>
+              <p class="loop-back">↻ repeats per step · advance only when the step is correct (where checkable) <strong>and</strong> the child shows enough reasoning for the phase</p>
+
+              <p style="margin-top:16px"><strong>Wait is an adaptive timer</strong>, not a flat two minutes — it tells active thinking from stuck silence:</p>
+              <div class="scroll-x">
+                <table>
+                  <thead><tr><th>Age band</th><th>Hint threshold (unproductive silence)</th></tr></thead>
+                  <tbody>
+                    <tr><td><span class="k">7–8</span></td><td class="state-warn">~20–45 seconds</td></tr>
+                    <tr><td><span class="k">9–12</span></td><td class="state-warn">~45–90 seconds</td></tr>
+                    <tr><td><span class="k">Hard ceiling (all)</span></td><td>never exceed ~2 minutes without a small hint</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="margin-top:12px">Extend while the child is verbalizing useful reasoning; shorten — and make the hint smaller — when anxious or shutting down.</p>
+
+              <p style="margin-top:18px"><strong>The support ladder has a floor and an exit</strong>, so the loop always terminates and never traps a child:</p>
+              <div class="floor">
+                <div class="fr"><span class="lbl">Floor</span><p>Deepest support is <strong>tutor models the step, then the child redoes that same micro-step</strong>. A hint is never just the bare answer.</p></div>
+                <div class="fr clay"><span class="lbl">Park-it</span><p>If still blocked after the modeled redo, <strong>park it</strong> — mark the misconception, move on or wrap, and revisit next session. No grinding the child down.</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div>
+            <div class="step-kicker">Per problem</div>
+            <h3>Answer check — against the framed task</h3>
+            <div class="body">
+              <p>Return to the <em>“We need to find ___”</em> blank from step 2: check units, give a sentence answer, sanity-check the earlier estimate, or substitute back — whichever fits the type. This closes the loop right back to comprehension.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">6</div>
+          <div>
+            <div class="step-kicker">Per problem</div>
+            <h3>Remember it</h3>
+            <div class="body">
+              <p>One short reflection — “what helped you figure it out?” — then persist the skill practiced, support level needed, any misconception, the behavior signal, and the scaffold that worked. <strong>The homework problem is done here.</strong> No second problem is forced.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step enforce">
+          <div class="step-num">7</div>
+          <div>
+            <div class="step-kicker">Session / skill level · near close</div>
+            <h3>Transfer check <span class="tag enf">enforced</span></h3>
+            <div class="body">
+              <p>Solving a homework problem <em>with help</em> is <strong>evidence, not proof</strong>. Near the end, for a skill that’s a candidate for mastery, the child attempts <strong>one</strong> independent, reduced-help item.</p>
+              <p>Passing it is what <strong>promotes mastery</strong>. Solving the original with heavy support leaves the skill at “developing.” Skipped if the child is dysregulated or out of time — mastery just stays put. This keeps the transfer guarantee without making every problem spawn extra homework.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">8</div>
+          <div>
+            <div class="step-kicker">Once per session</div>
+            <h3>Wrap-up</h3>
+            <div class="body">
+              <p>The child says what they learned; the tutor assigns <strong>one</strong> small, specific practice task and previews next time. The system writes the session summary plus mastery and misconception deltas — which become the input to step 0 next time. That loop is how “the tutor remembers what failed before” actually happens.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section id="languages">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Languages</h2>
+        <span class="note">Malaysia — Malay · 中文 · English, often mixed. A cross-cutting rule, never a “pick your language” quiz.</span>
+      </div>
+
+      <div class="callout">
+        <div class="lbl">THE RULE</div>
+        <p>Match the <strong>task’s language</strong> for subject terms and required output, mirror the <strong>child’s comfortable language</strong> for rapport and scaffolding, <strong>default to English</strong> when uncertain, and treat <strong>code-switching as normal</strong> — not a mistake.</p>
+      </div>
+
+      <h3 class="sub">Three signals decide the language each turn</h3>
+      <div class="scroll-x">
+        <table>
+          <thead><tr><th>Signal</th><th>What it is</th><th>What it leads</th></tr></thead>
+          <tbody>
+            <tr><td><span class="mono" style="color:var(--accent);font-weight:600">task_language</span></td><td>Language / script of the problem itself</td><td>Subject terms &amp; required output</td></tr>
+            <tr><td><span class="mono" style="color:var(--accent);font-weight:600">learner_comfort_language</span></td><td>The child’s stronger language</td><td>Comprehension &amp; scaffolding</td></tr>
+            <tr><td><span class="mono" style="color:var(--accent);font-weight:600">turn_language</span></td><td>What the child used this turn</td><td>Mirrored for rapport</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="aside">English is always the fallback. Policy, not a lock: adapt tone freely, but keep task terms and the answer language stable within a problem — don’t flip <span class="mono">denominator / penyebut / 分母</span> every turn unless that term is the lesson.</p>
+
+      <div class="split" style="margin-top:24px">
+        <div class="col">
+          <h3><span class="dot" aria-hidden="true"></span> Content subject — language is the medium</h3>
+          <p style="color:var(--muted);font-size:14.5px">Math, science. Language should <em>reduce</em> load: the child may frame and reason in their stronger language even if the worksheet is in Malay — comprehension of the <em>math</em> is never blocked by <em>language</em>. Subject terms and the written answer still follow the task language.</p>
+        </div>
+        <div class="col lang">
+          <h3><span class="dot" aria-hidden="true"></span> Language subject — language is the lesson</h3>
+          <p style="color:var(--muted);font-size:14.5px">BM karangan, English comprehension, Chinese 听写. The target language leads throughout; the child’s first language is allowed only for emotional safety and brief instructions — never to bypass target-language practice.</p>
+        </div>
+      </div>
+
+      <h3 class="sub" style="margin-top:30px">Per-step touchpoints</h3>
+      <div class="scroll-x">
+        <table>
+          <thead><tr><th>Step</th><th>Language behavior</th></tr></thead>
+          <tbody>
+            <tr><td><span class="k">0 · Session Open</span></td><td>Infer / confirm the child’s comfort language from memory and first turns.</td></tr>
+            <tr><td><span class="k">1 · Capture &amp; Parse</span></td><td>Detect problem language, script, type, and whether language is the subject.</td></tr>
+            <tr><td><span class="k">2 · Frame the Task</span></td><td>Apply the content-subject vs. language-subject rule.</td></tr>
+            <tr><td><span class="k">4 · Step Loop</span></td><td>Each turn carries its spoken language, term set, code-switch policy, and required output language.</td></tr>
+            <tr><td><span class="k">5 · Answer Check</span></td><td>Enforce the required output language / terms for the task.</td></tr>
+            <tr><td><span class="k">6 &amp; 8 · Memory</span></td><td>Persist comfort language, code-switch pattern, term preferences, per-language signals.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="sub" style="margin-top:30px">Build notes</h3>
+      <ul class="notes-list">
+        <li><strong>“Chinese” generates as Mandarin, Simplified</strong> — but detection accepts Traditional and mixed scripts rather than flagging them as errors.</li>
+        <li><strong>Per-learner term glossary</strong> (denominator / penyebut / 分母) keeps terminology consistent across turns and sessions.</li>
+        <li><strong>Safety, moderation, and escalation are multilingual</strong> — English-only guardrails are not enough.</li>
+        <li><strong>STT, vision, verifier, and TTS all take language as input</strong>; the verifier accepts the child’s “why” in any of the three languages.</li>
+        <li class="verify"><strong>Verify:</strong> the current TTS voice (<span class="mono">marin</span>) is English-oriented — confirm natural Malay and Mandarin pronunciation before relying on it; per-language voices may be needed.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="sec-head"><h2>Where the discipline matters most</h2><span class="note">Three points earn the server-owned phase machine.</span></div>
+      <div class="disc">
+        <div class="d"><div class="n">Step 2</div><h3>The gate</h3><p>Structurally prevents jumping to calculation before the child understands the question.</p></div>
+        <div class="d"><div class="n">Step 4</div><h3>The loop</h3><p>Enforces one demand per turn, the adaptive wait, the support floor, and a guaranteed exit.</p></div>
+        <div class="d"><div class="n">Step 7</div><h3>The proof</h3><p>Gates the mastery upgrade so “solved with help” is never mistaken for “learned.”</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>From process to system</h2>
+        <span class="note">How the workflow above becomes software the model can’t talk its way around.</span>
+      </div>
+
+      <div class="callout">
+        <div class="lbl">THE PRINCIPLE</div>
+        <p class="principle">Treat the model as a fluent improviser inside a <strong>cage the system controls</strong>. The system owns the rhythm, the truth, the memory, and the boundaries; the model owns only the words. Whenever pedagogy depends on something being reliable, <strong>code decides it — not the prompt</strong>.</p>
+      </div>
+
+      <h3 class="sub">Six moves that turn the process into a system</h3>
+      <div class="arch-grid">
+        <div class="acard">
+          <div class="ak">Rhythm</div>
+          <h3>Server-owned phase machine</h3>
+          <p>A Durable Object per session owns the phase, the legal moves, and the wait/hint timer. The model is <em>told</em> the phase — it never picks it.</p>
+          <div class="gap"><span class="now">now: self-reported</span> → <span class="tgt">authoritative FSM</span></div>
+        </div>
+        <div class="acard">
+          <div class="ak">Meaning</div>
+          <h3>Comprehension gate</h3>
+          <p>Three Reads + restatement become a state the session can’t exit. Solving moves stay forbidden until the child has framed the task.</p>
+          <div class="gap"><span class="now">now: a suggestion</span> → <span class="tgt">a hard exit condition</span></div>
+        </div>
+        <div class="acard">
+          <div class="ak">Contract</div>
+          <h3>Validated TutorAction</h3>
+          <p>Every turn is a structured action — move, support level, one cognitive demand, language — validated against policy <em>before</em> it is spoken.</p>
+          <div class="gap"><span class="now">now: free utterance</span> → <span class="tgt">checked schema</span></div>
+        </div>
+        <div class="acard">
+          <div class="ak">Truth</div>
+          <h3>Separate verifier</h3>
+          <p>A second call (symbolic where it can be) judges correctness — never the warm voice. Fixes the “confirm correct, miss the rest” trap.</p>
+          <div class="gap"><span class="now">now: self-graded</span> → <span class="tgt">independent judge</span></div>
+        </div>
+        <div class="acard">
+          <div class="ak">Memory</div>
+          <h3>Externalized learner model</h3>
+          <p>Per-skill mastery, misconceptions, and summaries in D1, updated by plain functions — so the next session opens with what the child actually needs.</p>
+          <div class="gap"><span class="now">now: sessions are islands</span> → <span class="tgt">durable continuity</span></div>
+        </div>
+        <div class="acard">
+          <div class="ak">Care</div>
+          <h3>Behaviour &amp; safety</h3>
+          <p>Detect anxious / rushing / shutdown and adapt the strategy; moderate every output, hold homework integrity, and escalate distress to a guardian.</p>
+          <div class="gap"><span class="now">now: thin</span> → <span class="tgt">multilingual guardrails</span></div>
+        </div>
+      </div>
+
+      <h3 class="sub" style="margin-top:30px">Build order — highest leverage first</h3>
+      <div class="buildorder">
+        <div class="bo"><span class="bn">01</span><p><strong>Wrap the pipeline in a validated TutorAction</strong> — load real state; check phase, move, word count, no-answer, and safety before TTS. Smallest change, biggest payoff.</p></div>
+        <div class="bo"><span class="bn">02</span><p><strong>Add the comprehension gate</strong> — Three Reads + restatement before any solving move.</p></div>
+        <div class="bo"><span class="bn">03</span><p><strong>Introduce the SessionRuntime Durable Object</strong> — serialize turns and own the wait/hint timer. This is where the two-minute rule becomes real.</p></div>
+        <div class="bo"><span class="bn">04</span><p><strong>Add the separate verifier</strong> for answer checks.</p></div>
+        <div class="bo"><span class="bn">05</span><p><strong>Externalize the learner model + session summaries</strong> — the continuity users will feel.</p></div>
+        <div class="bo"><span class="bn">06</span><p><strong>Parameterize pedagogy</strong> as a versioned spec (phase × mode × learner), then add behaviour adaptation.</p></div>
+        <div class="bo"><span class="bn">07</span><p><strong>Safety pipeline + guardian visibility</strong>, and cage Realtime behind the same controller.</p></div>
+      </div>
+      <p class="aside"><strong style="color:var(--text)">“Done” isn’t “helpful.”</strong> It’s <em>teaching</em> — measured by probing questions, productive struggle, and transfer, with evals for “never gives the answer,” “requires restatement,” “fades support,” and code-switched input.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="sec-head"><h2>Settled vs. still to validate</h2><span class="note">The structure is decided; the numbers are starting points.</span></div>
+      <div class="split">
+        <div class="col">
+          <h3><span class="dot" aria-hidden="true"></span> Settled — the structure</h3>
+          <ul>
+            <li>The step sequence and the session/per-problem split</li>
+            <li>Gate as a hard invariant, adaptively passed</li>
+            <li>Problem-type branching for framing</li>
+            <li>Conditional prior-knowledge</li>
+            <li>The step-loop shape, with a support floor and park-it exit</li>
+            <li>Verifier on checkable claims only</li>
+            <li>Session/skill-level transfer as the mastery proof</li>
+            <li>The trilingual language rule — task language, mirror the child, default English, code-switching is normal</li>
+          </ul>
+        </div>
+        <div class="col validate">
+          <h3><span class="dot" aria-hidden="true"></span> Validate with real children (7–12)</h3>
+          <ul>
+            <li>The exact wait-timer thresholds per age band</li>
+            <li>What counts as “enough reasoning” to advance at each phase</li>
+            <li>The adaptive forms of gate-proof for anxious vs. rushing learners</li>
+            <li>How aggressively support fades</li>
+            <li>TTS pronunciation quality for Malay and Mandarin (the current voice is English-oriented)</li>
+            <li>STT, vision, and the verifier on code-switched (Manglish / rojak) input</li>
+          </ul>
+          <p style="margin-top:14px;color:var(--muted);font-size:14px">Instrument these and revise against observed sessions — they are not final values.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="eyebrow">Two files, one source</div>
+      <div class="docs" style="grid-template-columns: repeat(2, 1fr); max-width: 560px;">
+        <div class="doc here"><div class="dl">HUMAN · this page</div><div class="dn">tutoring-workflow.html</div></div>
+        <div class="doc"><div class="dl">REFERENCE · for coding agents</div><div class="dn">tutoring-workflow.md</div></div>
+      </div>
+      <p class="foot-meta">Converged design · Claude × Codex · 2026-06-19 · pedagogy → process → architecture</p>
+    </div>
+  </footer>
+</main>
