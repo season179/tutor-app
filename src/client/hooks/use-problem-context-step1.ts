@@ -246,6 +246,10 @@ export function useProblemContextStep1({
       image: PreparedImage | undefined
     ) => {
       setExtractionStatus("extracting");
+      // Mirror the center focus card so the header badge stops saying "ready"
+      // while the vision model is still reading the photo. Completion/failure
+      // handlers below overwrite this with the outcome status.
+      setStatus("Reading the question from your photo…", "working");
       setExtractionError(null);
       setExtractionOutcome(null);
       setExtractionNotes(null);
