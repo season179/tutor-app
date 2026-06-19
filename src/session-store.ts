@@ -9,6 +9,7 @@ import type {
 } from "./session-types.js";
 import type { ExtractionOutcome } from "./problem-context/problem-context-types.js";
 import type { ProblemContextRecord, ProblemFrame } from "./problem-context/problem-frame.js";
+import type { ActiveStep } from "./active-step.js";
 import type { ComprehensionGateStatus, SessionPhase, SupportLevel } from "./tutor-action.js";
 
 export type SaveProblemContextRequest = {
@@ -22,6 +23,7 @@ export type SaveProblemContextRequest = {
 
 /** The server-owned phase state a tutoring turn advances to. */
 export type SessionPhaseAdvance = {
+  activeStep: ActiveStep | null;
   currentPhase: SessionPhase;
   gateStatus: ComprehensionGateStatus | null;
   supportLevel: SupportLevel;

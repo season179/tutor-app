@@ -39,6 +39,7 @@ export function SessionStream({ gateStatus, problemPin, turns, unknownTarget }: 
             <div className={classNames("turn", `turn--${turn.role}`)} key={turn.id}>
               {turn.role === "coach" ? <EchoMark /> : null}
               <div className="bubble">
+                {turn.verdict ? <VerdictChip verdict={turn.verdict} /> : null}
                 {turn.text}
                 {turn.role === "child" ? (
                   <span aria-hidden="true" className="mic">
@@ -78,6 +79,48 @@ function TargetStar() {
       viewBox="0 0 24 24"
     >
       <path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" />
+    </svg>
+  );
+}
+
+function VerdictChip({ verdict }: { verdict: NonNullable<TranscriptTurn["verdict"]> }) {
+  return (
+    <span className={classNames("vchip", `vchip--${verdict.chip}`)}>
+      {verdict.chip === "ok" ? <CheckIcon /> : verdict.chip === "retry" ? <RetryIcon /> : <span>◐</span>}
+      {verdict.label}
+    </span>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.4"
+      viewBox="0 0 24 24"
+    >
+      <path d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
+
+function RetryIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.2"
+      viewBox="0 0 24 24"
+    >
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <path d="M3 4v4h4" />
     </svg>
   );
 }

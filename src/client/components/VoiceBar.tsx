@@ -9,6 +9,8 @@ type VoiceBarProps = {
   isRecording: boolean;
   isRunning: boolean;
   onFinishAudioTurn: () => void;
+  onHint?: (() => void) | undefined;
+  onPark?: (() => void) | undefined;
   onStart: () => void;
   onStartAudioTurn: () => void;
   onStop: () => void;
@@ -27,6 +29,8 @@ export function VoiceBar({
   isRecording,
   isRunning,
   onFinishAudioTurn,
+  onHint,
+  onPark,
   onStart,
   onStartAudioTurn,
   onStop,
@@ -49,6 +53,20 @@ export function VoiceBar({
         <button className="vb-btn" onClick={onStop} type="button">
           <StopIcon />
           End
+        </button>
+      ) : null}
+
+      {isRunning && onHint ? (
+        <button className="vb-btn vb-btn--hint" onClick={onHint} type="button">
+          <HintIcon />
+          Hint
+        </button>
+      ) : null}
+
+      {isRunning && onPark ? (
+        <button className="vb-btn" onClick={onPark} type="button">
+          <ParkIcon />
+          Park
         </button>
       ) : null}
 
@@ -137,6 +155,40 @@ function StopIcon() {
       viewBox="0 0 24 24"
     >
       <rect height="12" rx="2" width="12" x="6" y="6" />
+    </svg>
+  );
+}
+
+function HintIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="M12 3a6 6 0 0 0-4 10c.8.7 1 1.2 1 2v1h6v-1c0-.8.2-1.3 1-2a6 6 0 0 0-4-10z" />
+      <path d="M9 21h6" />
+    </svg>
+  );
+}
+
+function ParkIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <rect height="14" rx="1" width="4" x="6" y="5" />
+      <rect height="14" rx="1" width="4" x="14" y="5" />
     </svg>
   );
 }

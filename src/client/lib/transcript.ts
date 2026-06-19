@@ -6,10 +6,16 @@ import {
 
 export type TranscriptRole = "coach" | "child";
 
+export type TranscriptVerdict = {
+  chip: "ok" | "partial" | "retry";
+  label: string;
+};
+
 export type TranscriptTurn = {
   id: number;
   role: TranscriptRole;
   text: string;
+  verdict: TranscriptVerdict | null;
 };
 
 /**
@@ -44,6 +50,28 @@ function turnTextFromValue(value: unknown): string {
   return "";
 }
 
+function verdictFromValue(value: unknown): TranscriptVerdict | null {
+  if (!value || typeof value !== "object" || !("verdict" in value)) {
+    return null;
+  }
+
+  const { verdict } = value as { verdict?: unknown };
+  if (!verdict || typeof verdict !== "object") {
+    return null;
+  }
+
+  const record = verdict as { chip?: unknown; label?: unknown };
+  if (
+    (record.chip === "ok" || record.chip === "partial" || record.chip === "retry") &&
+    typeof record.label === "string" &&
+    record.label.trim()
+  ) {
+    return { chip: record.chip, label: record.label.trim() };
+  }
+
+  return null;
+}
+
 export function toTranscriptTurns(events: SessionEventRecord[]): TranscriptTurn[] {
   const turns: TranscriptTurn[] = [];
 
@@ -60,7 +88,12 @@ export function toTranscriptTurns(events: SessionEventRecord[]): TranscriptTurn[
       continue;
     }
 
-    turns.push({ id: event.id, role, text });
+    turns.push({
+      id: event.id,
+      role,
+      text,
+      verdict: role === "coach" ? verdictFromValue(event.value) : null
+    });
   }
 
   return turns;

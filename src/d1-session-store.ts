@@ -22,12 +22,13 @@ import {
   mapD1SessionRow,
   nowIso,
   rowStringOrNull,
+  serializeActiveStep,
   serializeImageMeta,
   serializeProblemContext
 } from "./memory-session-store.js";
 
 const tutorSessionColumns =
-  "id, owner_key, title, status, image_prompt, image_name, image_meta_json, image_object_key, extraction_outcome, extraction_notes, prompt_confirmed, created_at, updated_at, current_phase, gate_status, current_support_level";
+  "id, owner_key, title, status, image_prompt, image_name, image_meta_json, image_object_key, extraction_outcome, extraction_notes, prompt_confirmed, created_at, updated_at, current_phase, gate_status, current_support_level, active_step_json";
 
 function d1Rows(result: D1Result): Record<string, unknown>[] {
   return (result.results ?? []) as Record<string, unknown>[];
@@ -46,10 +47,19 @@ export class D1SessionStore implements SessionStore {
     const result = await this.db
       .prepare(
         `UPDATE tutor_sessions
-         SET current_phase = ?, gate_status = ?, current_support_level = ?, updated_at = ?
+         SET current_phase = ?, gate_status = ?, current_support_level = ?, active_step_json = ?, updated_at = ?
          WHERE id = ? AND owner_key = ? AND current_phase = ?`
       )
-      .bind(advance.currentPhase, advance.gateStatus, advance.supportLevel, updatedAt, sessionId, ownerKey, expectedPhase)
+      .bind(
+        advance.currentPhase,
+        advance.gateStatus,
+        advance.supportLevel,
+        serializeActiveStep(advance.activeStep),
+        updatedAt,
+        sessionId,
+        ownerKey,
+        expectedPhase
+      )
       .run();
 
     if ((result.meta.changes ?? 0) !== 1) {
@@ -112,7 +122,7 @@ export class D1SessionStore implements SessionStore {
     await this.db
       .prepare(
         `INSERT INTO tutor_sessions (${tutorSessionColumns})
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         session.id,
@@ -130,7 +140,8 @@ export class D1SessionStore implements SessionStore {
         session.updatedAt,
         session.currentPhase,
         session.gateStatus,
-        session.supportLevel
+        session.supportLevel,
+        serializeActiveStep(session.activeStep)
       )
       .run();
 

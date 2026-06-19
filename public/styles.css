@@ -1312,6 +1312,62 @@ pre {
   line-height: 1.3;
 }
 
+.vchip {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 740;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.vchip svg {
+  block-size: 0.85rem;
+  flex: 0 0 auto;
+  inline-size: 0.85rem;
+}
+
+.vchip--ok {
+  background: oklch(0.93 0.045 150);
+  border: 1px solid oklch(0.45 0.12 150 / 0.35);
+  color: oklch(0.34 0.1 150);
+}
+
+.vchip--partial {
+  background: oklch(0.93 0.04 70);
+  border: 1px solid color-mix(in srgb, var(--line) 60%, var(--amber) 40%);
+  color: #8a4f17;
+}
+
+.vchip--retry {
+  background: var(--surface-rest);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+}
+
+.aid {
+  align-items: center;
+  background: var(--surface-rest);
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  color: var(--ink-soft);
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+  padding: 0.45rem 0.7rem;
+}
+
+.aid svg {
+  block-size: 0.95rem;
+  color: var(--primary);
+  flex: 0 0 auto;
+  inline-size: 0.95rem;
+}
+
 .voice-bar {
   align-items: center;
   display: flex;

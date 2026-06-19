@@ -1,4 +1,4 @@
-import type { ComprehensionGateStatus, SessionPhase } from "./tutor-action.js";
+import type { ComprehensionGateStatus, SessionPhase, SupportLevel } from "./tutor-action.js";
 
 export const voiceSessionPath = "/api/voice/session";
 export const voiceTurnPath = "/api/voice/turn";
@@ -118,7 +118,11 @@ export type VoicePipelineAudioOutput = {
 
 export type VoicePipelineSessionState = {
   currentPhase: SessionPhase;
+  focusAsk: string | null;
   gateStatus: ComprehensionGateStatus | null;
+  scaffoldAid: string | null;
+  studentStatus: StudentStatus;
+  supportLevel: SupportLevel;
   unknownTarget: string | null;
 };
 

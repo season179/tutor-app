@@ -237,15 +237,24 @@ export function App() {
         <CenterAnchor
           audioRef={audioRef}
           canRecordAudioTurn={canRecordAudioTurn}
+          currentPhase={liveSession.currentPhase}
+          focusAsk={liveSession.focusAsk}
           hasPriorActivity={activeSessionHasPriorActivity}
           isRecording={isRecording}
           isRunning={isRunning}
           onFinishAudioTurn={() => {
             void finishAudioTurn();
           }}
+          onHint={() => {
+            logEvent("Hint requested", { phase: liveSession.currentPhase });
+          }}
+          onPark={() => {
+            logEvent("Step parked", { phase: liveSession.currentPhase });
+          }}
           onStart={handleStart}
           onStartAudioTurn={startAudioTurn}
           onStop={stopSession}
+          scaffoldAid={liveSession.scaffoldAid}
           sessionReady={sessionReady}
         />
       </div>

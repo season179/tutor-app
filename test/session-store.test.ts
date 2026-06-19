@@ -109,6 +109,7 @@ test("advanceSessionPhase moves the phase when the expected phase matches", asyn
   const session = await store.createSession(ownerKey);
 
   const advanced = await store.advanceSessionPhase(ownerKey, session.id, "session_open", {
+    activeStep: null,
     currentPhase: "frame_task",
     gateStatus: "needs_restatement",
     supportLevel: 0
@@ -128,6 +129,7 @@ test("advanceSessionPhase refuses to advance when the expected phase is stale", 
   const session = await store.createSession(ownerKey);
 
   const result = await store.advanceSessionPhase(ownerKey, session.id, "step_loop", {
+    activeStep: null,
     currentPhase: "answer_check",
     gateStatus: null,
     supportLevel: 0
@@ -161,6 +163,38 @@ test("mapD1SessionRow normalizes optional image columns", () => {
   assert.equal(session.extractionOutcome, "partial");
   assert.equal(session.extractionNotes, "Bottom cut off.");
   assert.equal(session.promptConfirmed, true);
+});
+
+test("mapD1SessionRow parses active_step_json", () => {
+  const session = mapD1SessionRow({
+    active_step_json: JSON.stringify({
+      ask: "How many stickers is that?",
+      defaultWrongNudge: "Try again.",
+      distractorNudges: { "24": "That is the total." },
+      expectedAnswers: [4],
+      scaffoldAid: "4 friends · 1 sticker each"
+    }),
+    created_at: "2026-06-17T01:02:03.000Z",
+    current_phase: "step_loop",
+    current_support_level: 1,
+    extraction_notes: null,
+    extraction_outcome: null,
+    gate_status: "complete",
+    id: "session-1",
+    image_meta_json: null,
+    image_name: null,
+    image_object_key: null,
+    image_prompt: null,
+    owner_key: "access:user-a",
+    prompt_confirmed: 0,
+    status: "active",
+    title: "Sharing",
+    updated_at: "2026-06-17T02:03:04.000Z"
+  });
+
+  assert.equal(session.activeStep?.expectedAnswers[0], 4);
+  assert.equal(session.currentPhase, "step_loop");
+  assert.equal(session.supportLevel, 1);
 });
 
 test("confirming a typed prompt seeds problem context and gate status", async () => {

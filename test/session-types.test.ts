@@ -7,6 +7,7 @@ import {
 } from "../src/session-types.ts";
 
 const baseSession: TutorSessionRecord = {
+  activeStep: null,
   createdAt: "2026-06-17T01:02:03.000Z",
   currentPhase: "session_open",
   extractionNotes: null,

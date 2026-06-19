@@ -9,6 +9,7 @@ import type {
   TutorSessionSummary,
   UpdateTutorSessionRequest
 } from "./session-types.js";
+import { parseActiveStep, serializeActiveStep, type ActiveStep } from "./active-step.js";
 import type { ExtractionOutcome } from "./problem-context/problem-context-types.js";
 import { problemTypes, type ProblemContextRecord, type ProblemFrame, type ProblemQuantity, type ProblemType } from "./problem-context/problem-frame.js";
 import { isJsonObject } from "./schema-parser.js";
@@ -229,6 +230,7 @@ function createTutorSessionRecord(
   id: string
 ): TutorSessionRecord {
   return {
+    activeStep: null,
     createdAt,
     currentPhase: initialPhase,
     extractionNotes: null,
@@ -279,6 +281,7 @@ export class MemorySessionStore implements SessionStore {
       return null;
     }
 
+    session.activeStep = advance.activeStep;
     session.currentPhase = advance.currentPhase;
     session.gateStatus = advance.gateStatus;
     session.supportLevel = advance.supportLevel;
@@ -414,6 +417,7 @@ export class MemorySessionStore implements SessionStore {
 
 export function mapD1SessionRow(row: Record<string, unknown>): TutorSessionRecord {
   return {
+    activeStep: parseActiveStep(parseJsonOrNull(rowStringOrNull(row.active_step_json))),
     createdAt: String(row.created_at),
     currentPhase: parseSessionPhase(row.current_phase),
     extractionNotes: rowStringOrNull(row.extraction_notes),
@@ -448,7 +452,9 @@ export {
   createSessionEventRecord,
   createTutorSessionRecord,
   nowIso,
+  parseActiveStep,
   parseImageMeta,
   rowStringOrNull,
+  serializeActiveStep,
   serializeImageMeta
 };

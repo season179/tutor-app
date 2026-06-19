@@ -1,4 +1,5 @@
 import { HttpError, type JsonValue } from "./http-error.js";
+import { deriveFirstCheckableStep, type ActiveStep } from "./active-step.js";
 import { checkGateRestatement } from "./gate-checker.js";
 import { allowedMoves, allowedNextPhases, canTransition, forbiddenMoves } from "./phase-policy.js";
 import type { ProblemContextRecord } from "./problem-context/problem-frame.js";
@@ -9,7 +10,11 @@ import {
   tutorTurnEventMessage,
   type TutorSessionDetail
 } from "./session-types.js";
-import { isJsonObject } from "./schema-parser.js";
+import {
+  shouldVerifyActiveStep,
+  verifyActiveStep,
+  type StepVerifierVerdict
+} from "./step-verifier.js";
 import {
   gateForbiddenMoves,
   sessionPhases,
@@ -17,8 +22,11 @@ import {
   type ProposedMove,
   type ProposedTutorAction,
   type SessionPhase,
-  type ComprehensionGateStatus
+  type ComprehensionGateStatus,
+  type StudentAssessmentStatus,
+  type SupportLevel
 } from "./tutor-action.js";
+import { isJsonObject } from "./schema-parser.js";
 import { validateTutorAction } from "./tutor-action-validator.js";
 import { tutorPolicy } from "./tutor-policy.js";
 import {
@@ -28,6 +36,7 @@ import {
 import type {
   LessonPhase,
   PublicLessonTurn,
+  StudentStatus,
   VoicePipelineAudioInput,
   VoicePipelineAudioOutput,
   VoicePipelineSessionState,
@@ -67,11 +76,14 @@ type VoicePipelineOptions = {
 };
 
 type TutorTurnInput = {
+  activeStep: ActiveStep | null;
   detail: TutorSessionDetail;
   gateStatus: ComprehensionGateStatus | null;
   image: VoicePreparedImage | null;
   problemContext: ProblemContextRecord | null;
+  stepVerifierVerdict: StepVerifierVerdict | null;
   studentText: string;
+  supportLevel: SupportLevel;
 };
 
 export function createVoicePipelineOptions(env: VoicePipelineServiceEnv): VoicePipelineOptions {
@@ -111,19 +123,47 @@ export async function handleVoicePipelineTurnWithStore(
     }
   }
 
+  let activeStep = detail.session.activeStep;
+  if (!activeStep && shouldSeedActiveStep(fromPhase, gateStatus, problemContext)) {
+    activeStep = deriveFirstCheckableStep(problemContext!);
+  }
+
+  let stepVerifierVerdict: StepVerifierVerdict | null = null;
+  if (activeStep && shouldRunStepVerifier(fromPhase, gateStatus, studentText)) {
+    stepVerifierVerdict = verifyActiveStep(activeStep, studentText);
+  }
+
+  const supportLevel = nextSupportLevel(
+    detail.session.supportLevel,
+    stepVerifierVerdict,
+    studentText
+  );
+
   const action = await proposeTutorAction(
-    { detail, gateStatus, image: request.image ?? null, problemContext, studentText },
+    {
+      activeStep,
+      detail,
+      gateStatus,
+      image: request.image ?? null,
+      problemContext,
+      stepVerifierVerdict,
+      studentText,
+      supportLevel
+    },
     options
   );
 
   const audio = await createTutorSpeech(action.spokenUtterance, options);
-  const publicLesson = projectToPublicLesson(action);
+  const publicLesson = projectToPublicLesson(action, stepVerifierVerdict);
   const toPhase = nextPhaseFor(fromPhase, action, gateStatus);
-  const sessionState: VoicePipelineSessionState = {
-    currentPhase: toPhase,
+  const sessionState = buildSessionState({
+    activeStep,
     gateStatus,
-    unknownTarget: problemContext?.unknownTarget ?? null
-  };
+    phase: toPhase,
+    problemContext,
+    stepVerifierVerdict,
+    supportLevel
+  });
   const response = serializeVoicePipelineTurnResponse({
     audio,
     lesson: publicLesson,
@@ -136,9 +176,10 @@ export async function handleVoicePipelineTurnWithStore(
   // moved the session off `fromPhase`, so this turn is stale: bail rather than recording a
   // transition that never happened or speaking over the turn that won the race.
   const advanced = await store.advanceSessionPhase(requestContext.ownerKey, request.sessionId, fromPhase, {
+    activeStep,
     currentPhase: toPhase,
     gateStatus,
-    supportLevel: detail.session.supportLevel
+    supportLevel
   });
   if (!advanced) {
     throw new HttpError(409, "This session was advanced by another turn. Please retry.");
@@ -165,6 +206,20 @@ export async function handleVoicePipelineTurnWithStore(
       }
     });
   }
+  if (stepVerifierVerdict) {
+    await store.appendEvent(requestContext.ownerKey, request.sessionId, {
+      message: "Step verify",
+      value: {
+        chip: stepVerifierVerdict.chip,
+        chipLabel: stepVerifierVerdict.chipLabel,
+        correctionHint: stepVerifierVerdict.correctionHint,
+        method: stepVerifierVerdict.method,
+        studentAnswer: stepVerifierVerdict.studentAnswer,
+        studentStatus: stepVerifierVerdict.studentStatus,
+        studentText
+      }
+    });
+  }
   await store.appendEvent(requestContext.ownerKey, request.sessionId, {
     message: tutorTurnEventMessage,
     value: {
@@ -172,11 +227,90 @@ export async function handleVoicePipelineTurnWithStore(
       move: action.move,
       phase: fromPhase,
       nextPhase: toPhase,
-      text: action.spokenUtterance
+      text: action.spokenUtterance,
+      verdict:
+        stepVerifierVerdict === null
+          ? null
+          : {
+              chip: stepVerifierVerdict.chip,
+              label: stepVerifierVerdict.chipLabel
+            }
     }
   });
 
   return response;
+}
+
+function shouldSeedActiveStep(
+  phase: SessionPhase,
+  gateStatus: ComprehensionGateStatus | null,
+  problemContext: ProblemContextRecord | null
+): problemContext is ProblemContextRecord {
+  return (
+    (phase === "plan_first_step" || phase === "step_loop") &&
+    gateStatus === "complete" &&
+    Boolean(problemContext)
+  );
+}
+
+function shouldRunStepVerifier(
+  phase: SessionPhase,
+  gateStatus: ComprehensionGateStatus | null,
+  studentText: string
+): boolean {
+  return phase === "step_loop" && gateStatus === "complete" && shouldVerifyActiveStep(studentText);
+}
+
+function nextSupportLevel(
+  current: SupportLevel,
+  verdict: StepVerifierVerdict | null,
+  studentText: string
+): SupportLevel {
+  if (!verdict || verdict.method === "skipped") {
+    return current;
+  }
+
+  if (verdict.studentStatus === "correct" && studentText.trim().split(/\s+/).length >= 4) {
+    return Math.max(0, current - 1) as SupportLevel;
+  }
+
+  if (verdict.studentStatus === "incorrect" || verdict.studentStatus === "partial") {
+    return Math.min(4, current + 1) as SupportLevel;
+  }
+
+  return current;
+}
+
+function buildSessionState(input: {
+  activeStep: ActiveStep | null;
+  gateStatus: ComprehensionGateStatus | null;
+  phase: SessionPhase;
+  problemContext: ProblemContextRecord | null;
+  stepVerifierVerdict: StepVerifierVerdict | null;
+  supportLevel: SupportLevel;
+}): VoicePipelineSessionState {
+  return {
+    currentPhase: input.phase,
+    focusAsk: input.activeStep?.ask ?? null,
+    gateStatus: input.gateStatus,
+    scaffoldAid: input.activeStep?.scaffoldAid ?? null,
+    studentStatus: mapStudentStatusToLegacy(input.stepVerifierVerdict?.studentStatus ?? "unknown"),
+    supportLevel: input.supportLevel,
+    unknownTarget: input.problemContext?.unknownTarget ?? null
+  };
+}
+
+function mapStudentStatusToLegacy(status: StudentAssessmentStatus): StudentStatus {
+  switch (status) {
+    case "correct":
+      return "correct";
+    case "partial":
+      return "partial";
+    case "incorrect":
+      return "stuck";
+    default:
+      return "unknown";
+  }
 }
 
 function shouldEvaluateGateRestatement(
@@ -255,7 +389,7 @@ async function proposeTutorAction(
       apiKey: requireOpenAiApiKey(options),
       body: JSON.stringify({
         input: createTutorInput(input),
-        instructions: tutorActionInstructions(phase, gateStatus, rejectionReasons),
+        instructions: tutorActionInstructions(phase, gateStatus, input.stepVerifierVerdict, rejectionReasons),
         model: options.tutorModel,
         text: {
           format: {
@@ -373,6 +507,7 @@ function createTutorPrompt(input: TutorTurnInput): string {
   return JSON.stringify(
     {
       allowedMoves: allowedMoves(phase),
+      activeStep: input.activeStep,
       comprehensionGate: {
         status: input.gateStatus,
         unknownTarget: input.problemContext?.unknownTarget ?? null
@@ -382,7 +517,8 @@ function createTutorPrompt(input: TutorTurnInput): string {
       currentSession: {
         imageName: input.detail.session.imageName,
         imagePrompt: input.detail.session.imagePrompt,
-        status: input.detail.session.status
+        status: input.detail.session.status,
+        supportLevel: input.supportLevel
       },
       forbiddenMoves: forbiddenMoves(phase),
       problemFrame: input.problemContext
@@ -393,6 +529,7 @@ function createTutorPrompt(input: TutorTurnInput): string {
             visibleQuestion: input.problemContext.visibleQuestion
           }
         : null,
+      stepVerifierVerdict: input.stepVerifierVerdict,
       // Events are stored newest-first; take the 14 most recent and present them
       // oldest-to-newest so the model reads the conversation in order.
       recentHistory: input.detail.events
@@ -411,6 +548,7 @@ function createTutorPrompt(input: TutorTurnInput): string {
 function tutorActionInstructions(
   phase: SessionPhase,
   gateStatus: ComprehensionGateStatus | null,
+  stepVerifierVerdict: StepVerifierVerdict | null,
   rejectionReasons: string[]
 ): string {
   const allowed = allowedMoves(phase).join(", ");
@@ -421,6 +559,11 @@ function tutorActionInstructions(
       : gateStatus === "complete"
         ? "\nThe comprehension gate is complete — you may acknowledge their restatement and move on when ready."
         : "";
+  const verifierNote = stepVerifierVerdict
+    ? `\nA separate verifier already graded the student's step answer. Do NOT contradict it or reveal the final answer.
+Verifier verdict: ${JSON.stringify(stepVerifierVerdict)}
+Weave correctionHint into spokenUtterance when wrong; on correct answers, affirm briefly with a why.`
+    : "";
   const retry = rejectionReasons.length
     ? `\n\nYour previous attempt was rejected for these reasons:\n- ${rejectionReasons.join("\n- ")}\nChoose a different move or rephrase so it passes.`
     : "";
@@ -431,7 +574,7 @@ You are the move generator for a server-enforced tutoring state machine. The ser
 
 Current phase: "${phase}".
 Moves you may use this phase: ${allowed}.
-Never use these moves: ${forbidden} — they solve or reveal the answer.${gateNote}
+Never use these moves: ${forbidden} — they solve or reveal the answer.${gateNote}${verifierNote}
 
 Hard rules:
 - Return only the requested JSON schema.
@@ -531,12 +674,14 @@ const legacyTutorActionByMove: Record<ProposedMove, PublicLessonTurn["tutorActio
   check_answer: "ask"
 };
 
-function projectToPublicLesson(action: ProposedTutorAction): PublicLessonTurn {
+function projectToPublicLesson(
+  action: ProposedTutorAction,
+  stepVerifierVerdict: StepVerifierVerdict | null
+): PublicLessonTurn {
   return {
     phase: lessonPhaseBySessionPhase[action.phase],
     spokenUtterance: action.spokenUtterance,
-    // No assessment until the separate verifier (M4); the tutor never self-grades.
-    studentStatus: "unknown",
+    studentStatus: mapStudentStatusToLegacy(stepVerifierVerdict?.studentStatus ?? "unknown"),
     tutorAction: legacyTutorActionByMove[action.move]
   };
 }

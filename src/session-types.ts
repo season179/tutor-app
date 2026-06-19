@@ -4,6 +4,7 @@ export const maxSessionEvents = 200;
 
 export type TutorSessionStatus = "draft" | "active" | "ended";
 
+import type { ActiveStep } from "./active-step.js";
 import type { ExtractionOutcome } from "./problem-context/problem-context-types.js";
 import type { ProblemContextRecord } from "./problem-context/problem-frame.js";
 import type { ComprehensionGateStatus, SessionPhase, SupportLevel } from "./tutor-action.js";
@@ -23,6 +24,7 @@ export type TutorSessionSummary = {
 };
 
 export type TutorSessionRecord = TutorSessionSummary & {
+  activeStep: ActiveStep | null;
   currentPhase: SessionPhase;
   extractionNotes: string | null;
   extractionOutcome: ExtractionOutcome | null;

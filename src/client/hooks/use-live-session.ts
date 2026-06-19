@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { sessionPhases, type ComprehensionGateStatus, type SessionPhase } from "../../tutor-action.js";
+import { sessionPhases, type ComprehensionGateStatus, type SessionPhase, type SupportLevel } from "../../tutor-action.js";
 import type { VoicePipelineSessionState } from "../../voice-types.js";
 import { getSession } from "../lib/session-api.js";
 import { toTranscriptTurns, type TranscriptTurn } from "../lib/transcript.js";
@@ -24,14 +24,20 @@ type UseLiveSessionOptions = {
  */
 type LiveSessionView = {
   currentPhase: SessionPhase;
+  focusAsk: string | null;
   gateStatus: ComprehensionGateStatus | null;
+  scaffoldAid: string | null;
+  supportLevel: SupportLevel;
   turns: TranscriptTurn[];
   unknownTarget: string | null;
 };
 
 const emptyView: LiveSessionView = {
   currentPhase: initialPhase,
+  focusAsk: null,
   gateStatus: null,
+  scaffoldAid: null,
+  supportLevel: 0,
   turns: [],
   unknownTarget: null
 };
@@ -64,7 +70,10 @@ export function useLiveSession({
 
         setView({
           currentPhase: detail.session.currentPhase,
+          focusAsk: detail.session.activeStep?.ask ?? null,
           gateStatus: detail.session.gateStatus,
+          scaffoldAid: detail.session.activeStep?.scaffoldAid ?? null,
+          supportLevel: detail.session.supportLevel,
           turns: toTranscriptTurns(detail.events),
           unknownTarget: detail.problemContext?.unknownTarget ?? null
         });
@@ -86,7 +95,10 @@ export function useLiveSession({
     setView((current) => ({
       ...current,
       currentPhase: turnSessionState.currentPhase,
+      focusAsk: turnSessionState.focusAsk,
       gateStatus: turnSessionState.gateStatus,
+      scaffoldAid: turnSessionState.scaffoldAid,
+      supportLevel: turnSessionState.supportLevel,
       unknownTarget: turnSessionState.unknownTarget
     }));
   }, [turnSessionState]);

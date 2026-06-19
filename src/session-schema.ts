@@ -62,6 +62,15 @@ const tutorSessionSummarySchema = z.object({
 }) satisfies z.ZodType<TutorSessionSummary>;
 
 const tutorSessionRecordSchema = tutorSessionSummarySchema.extend({
+  activeStep: z
+    .object({
+      ask: z.string(),
+      defaultWrongNudge: z.string(),
+      distractorNudges: z.record(z.string(), z.string()),
+      expectedAnswers: z.array(z.number()),
+      scaffoldAid: z.string()
+    })
+    .nullable(),
   currentPhase: z.enum(sessionPhases),
   extractionNotes: z.string().nullable(),
   extractionOutcome: extractionOutcomeSchema.nullable(),
