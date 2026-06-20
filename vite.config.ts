@@ -3,7 +3,7 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 
-// Vite replaces esbuild as the client bundler and powers TanStack Start SSR.
+// Vite (with Rolldown) is the client bundler and powers TanStack Start SSR.
 // Plugin order matters: cloudflare → tanstackStart → viteReact (per the CF + Start docs).
 export default defineConfig({
   server: {

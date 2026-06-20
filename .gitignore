@@ -1,8 +1,6 @@
 node_modules/
 .pnpm-store/
 dist/
-public/client.js
-public/client.js.map
 .env*
 !.env.example
 .dev.vars*
