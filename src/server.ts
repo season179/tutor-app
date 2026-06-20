@@ -27,7 +27,7 @@ export {
   isOwnedProblemImageKey
 } from "./modules/problems/problem-image-store.js";
 export { extractQuestionFromImageUrl } from "./modules/problems/question-extraction-service.js";
-export { maxVoiceTurnBodyBytes, voiceTurnPath } from "./modules/voice/voice-types.js";
+export { maxVoiceTurnBodyBytes } from "./modules/voice/voice-types.js";
 export type { JsonValue } from "./core/http-error.js";
 export { HttpError } from "./core/http-error.js";
 export {

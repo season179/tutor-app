@@ -1,24 +1,19 @@
-import { parseVoiceSessionDescriptor } from "../../modules/voice/voice-session-schema.js";
-import {
-  voiceSessionPath,
-  type CreateVoiceSessionRequest,
-  type VoiceSessionDescriptor
+import { createVoiceSessionFn } from "../../modules/voice/server/voice-fns.js";
+import type {
+  CreateVoiceSessionRequest,
+  VoiceSessionDescriptor
 } from "../../modules/voice/voice-types.js";
-import { jsonRequestInit } from "./json-request.js";
-import { readJsonResponse } from "./read-json-response.js";
+import { errorMessage } from "./error-message.js";
 
 export async function requestVoiceSessionDescriptor(sessionId: string): Promise<VoiceSessionDescriptor> {
   const request: CreateVoiceSessionRequest = {
     intent: "tutor",
     sessionId
   };
-  const response = await fetch(voiceSessionPath, jsonRequestInit("POST", request));
-  const payload = await readJsonResponse<unknown>(
-    response,
-    (_status, message) => new Error(message),
-    (status) => `Failed to create voice session (${status}).`,
-    "Voice session response was not valid JSON."
-  );
 
-  return parseVoiceSessionDescriptor(payload);
+  try {
+    return await createVoiceSessionFn({ data: request });
+  } catch (error) {
+    throw new Error(errorMessage(error, "Failed to create voice session."));
+  }
 }

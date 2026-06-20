@@ -1,7 +1,5 @@
 import type { ComprehensionGateStatus, SessionPhase, SupportLevel } from "../tutoring/tutor-action.js";
 
-export const voiceSessionPath = "/api/voice/session";
-export const voiceTurnPath = "/api/voice/turn";
 export const maxVoiceTurnBodyBytes = 8_000_000;
 
 export const defaultImagePrompt = "Help me understand this problem step by step.";

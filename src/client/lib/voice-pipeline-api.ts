@@ -1,26 +1,18 @@
-import {
-  parseVoicePipelineTurnResponse
-} from "../../modules/voice/voice-session-schema.js";
-import {
-  voiceTurnPath,
-  type VoicePipelineAudioInput,
-  type VoicePipelineTurnRequest,
-  type VoicePipelineTurnResponse,
-  type VoicePreparedImage
+import { voicePipelineTurnFn } from "../../modules/voice/server/voice-fns.js";
+import type {
+  VoicePipelineAudioInput,
+  VoicePipelineTurnRequest,
+  VoicePipelineTurnResponse,
+  VoicePreparedImage
 } from "../../modules/voice/voice-types.js";
-import { jsonRequestInit } from "./json-request.js";
-import { readJsonResponse } from "./read-json-response.js";
+import { errorMessage } from "./error-message.js";
 
 export async function requestVoicePipelineTurn(request: VoicePipelineTurnRequest): Promise<VoicePipelineTurnResponse> {
-  const response = await fetch(voiceTurnPath, jsonRequestInit("POST", request));
-  const payload = await readJsonResponse<unknown>(
-    response,
-    (_status, message) => new Error(message),
-    (status) => `Failed to create tutor turn (${status}).`,
-    "Tutor turn response was not valid JSON."
-  );
-
-  return parseVoicePipelineTurnResponse(payload);
+  try {
+    return await voicePipelineTurnFn({ data: request });
+  } catch (error) {
+    throw new Error(errorMessage(error, "Failed to create tutor turn."));
+  }
 }
 
 export function createImageVoicePipelineTurn(
