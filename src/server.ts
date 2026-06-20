@@ -1,10 +1,10 @@
-// The local development entrypoint is now `wrangler dev` (see package.json
-// `dev` script), which provides a real D1 binding that better-auth requires.
+// This module is not an entrypoint. It is retained only so `tsconfig.server.json`
+// (which lists it as its sole entry) emits the shared server-side modules that
+// tests import from `dist/` — e.g. `MemorySessionStore` and
+// `handleVoicePipelineTurnWithStore`.
 //
-// This module is retained only so `tsconfig.server.json` (which lists it as its
-// sole entry) emits the shared server-side modules that tests import from
-// `dist/` — e.g. `MemorySessionStore` and `handleVoicePipelineTurnWithStore`.
-// It is not the dev server. To run the app locally use `pnpm dev`.
+// To run the app locally use `pnpm dev` (Portless → `vite dev` with the
+// Cloudflare plugin, which provides the real D1 binding better-auth requires).
 
 export { transferSessionsOnLink } from "./modules/auth/auth.js";
 export { MemorySessionStore } from "./modules/sessions/memory-session-store.js";

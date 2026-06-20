@@ -15,6 +15,16 @@ export { SessionRuntimeDO };
 export default {
   async fetch(request, env): Promise<Response> {
     const url = new URL(request.url);
+
+    // Everything the worker owns lives under /api/. Any other path (the SSR
+    // document, or a client asset that missed the asset router) goes straight
+    // to TanStack Start — without building a better-auth instance and D1 store
+    // it would never use on the SSR hot path.
+    if (!url.pathname.startsWith("/api/")) {
+      // Start reads CF bindings via `cloudflare:workers`, so only the Request is passed.
+      return startServer.fetch(request);
+    }
+
     const store = new D1SessionStore(env.DB);
     const auth = createWorkerAuth(env, store);
 
@@ -41,8 +51,12 @@ export default {
       return apiResponse;
     }
 
-    // Start reads CF bindings via `cloudflare:workers`, so only the Request is passed.
-    return startServer.fetch(request);
+    // Unknown /api/* endpoint: keep it out of the SPA renderer and return a
+    // JSON 404 instead of SSR'ing an HTML document in response to an API call.
+    return Response.json(
+      { error: "Not found" },
+      { status: 404, headers: { "Cache-Control": "no-store" } }
+    );
   }
 } satisfies ExportedHandler<Env>;
 

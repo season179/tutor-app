@@ -5,7 +5,9 @@
   "compatibility_date": "2026-06-14",
   "compatibility_flags": ["nodejs_compat"],
   // Static assets are wired by @cloudflare/vite-plugin at build time (it emits the
-  // client bundle and configures asset serving); the worker runs first for SSR.
+  // client bundle and configures asset serving). The asset router serves matching
+  // static assets first; the worker runs for everything else — SSR of `/` and all
+  // /api/* routes.
   "r2_buckets": [
     {
       "binding": "PROBLEM_IMAGES",

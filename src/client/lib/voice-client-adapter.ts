@@ -150,6 +150,7 @@ class OpenAIVoicePipelineClientAdapter extends BaseVoiceClientAdapter {
   disconnect(): void {
     if (this.isCapturingAudio) {
       this.mediaRecorder?.stop();
+      this.isCapturingAudio = false;
     }
 
     this.mediaStream?.getTracks().forEach((track) => track.stop());
@@ -176,7 +177,9 @@ class OpenAIVoicePipelineClientAdapter extends BaseVoiceClientAdapter {
       recorder.addEventListener(
         "error",
         (event) => {
-          reject(event.error);
+          // event.error is undefined on browsers that dropped the legacy
+          // MediaRecorderErrorEvent.error property; keep a diagnostic message.
+          reject(event.error ?? new Error("Audio recording failed."));
         },
         { once: true }
       );
@@ -249,7 +252,7 @@ class OpenAIVoicePipelineClientAdapter extends BaseVoiceClientAdapter {
       }
     });
     recorder.addEventListener("error", (event) => {
-      this.emit({ error: event.error, type: "error" });
+      this.emit({ error: event.error ?? new Error("Audio recording failed."), type: "error" });
     });
 
     this.mediaRecorder = recorder;

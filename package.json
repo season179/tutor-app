@@ -9,7 +9,7 @@
     "pnpm": ">=11 <12"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "pnpm typecheck:tsc && vite build",
     "check:worker-types": "wrangler types --check",
     "deploy": "pnpm build && wrangler deploy",
     "deploy:dry-run": "pnpm build && wrangler deploy --dry-run",
@@ -18,7 +18,8 @@
     "preview": "vite preview",
     "db:migrate": "wrangler d1 migrations apply ai-tutor-sessions --local",
     "db:migrate:remote": "wrangler d1 migrations apply ai-tutor-sessions --remote",
-    "typecheck": "pnpm check:worker-types && tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.worker.json && pnpm test",
+    "typecheck:tsc": "pnpm check:worker-types && tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.worker.json",
+    "typecheck": "pnpm typecheck:tsc && pnpm test",
     "test": "tsc -p tsconfig.server.json && node --experimental-strip-types --test test/**/*.test.ts"
   },
   "portless": {

@@ -54,7 +54,7 @@ pnpm wrangler secret put GOOGLE_CLIENT_SECRET
 pnpm dev
 ```
 
-This builds the client and runs `wrangler dev` (local D1) behind Portless, so better-auth has a real store in dev. Open `https://ai-tutor.dev`, sign in with Google, choose a problem image, wait for it to be prepared, and click **Ask about image**. The tutor will speak one short next step. Use **Record answer** after each prompt, then **Stop and send** to let the tutor check that answer before moving on.
+This runs `vite dev` with the Cloudflare plugin (so D1 and the other bindings work locally) behind Portless, so better-auth has a real store in dev. Open `https://ai-tutor.dev`, sign in with Google, choose a problem image, wait for it to be prepared, and click **Ask about image**. The tutor will speak one short next step. Use **Record answer** after each prompt, then **Stop and send** to let the tutor check that answer before moving on.
 
 Apply the database schema locally with:
 
@@ -74,7 +74,7 @@ pnpm db:migrate
 
 ## Cloudflare Workers
 
-The production deployment uses a Worker-native entrypoint in `src/worker.ts` plus Workers Static Assets for `public/`. The Worker handles better-auth routes at `/api/auth/*`, plus `POST /api/voice/session` and `POST /api/voice/turn`, reads secrets from Cloudflare, rate-limits voice API requests, sends OpenAI a hashed per-caller safety identifier for the Realtime fallback, and serves static assets through the `ASSETS` binding. A new better-auth instance is constructed per request from the `DB` (D1) binding.
+The production deployment uses a Worker-native entrypoint in `src/worker.ts`; `@cloudflare/vite-plugin` emits the client bundle and configures asset serving at build time. The Worker handles better-auth routes at `/api/auth/*`, plus `POST /api/voice/session` and `POST /api/voice/turn`, reads secrets from Cloudflare, rate-limits voice API requests, sends OpenAI a hashed per-caller safety identifier for the Realtime fallback, and delegates everything outside `/api/*` to TanStack Start (SSR + the client bundle). A new better-auth instance is constructed per request from the `DB` (D1) binding.
 
 For deployment:
 
@@ -93,8 +93,8 @@ pnpm deploy
 ## Scripts
 
 ```bash
-pnpm dev            # build client + wrangler dev (local D1) behind Portless → https://ai-tutor.dev
-pnpm dev:worker     # wrangler dev directly on http://localhost:8787 (no Portless)
+pnpm dev            # vite dev (local D1 via the CF plugin) behind Portless → https://ai-tutor.dev
+pnpm dev:vite       # vite dev directly on http://localhost:3000 (no Portless)
 pnpm db:migrate     # apply D1 migrations locally
 pnpm db:migrate:remote
 pnpm check:worker-types
