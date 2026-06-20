@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
+import { useMutation } from "@tanstack/react-query";
+
 import type { ExtractionOutcome } from "../../modules/problems/problem-context-types.js";
 import type { SessionImageMeta } from "../../modules/sessions/session-types.js";
 import { maxProblemImageBytes } from "../../modules/problems/problem-context-types.js";
@@ -120,6 +122,32 @@ export function useProblemContextStep1({
   const workflowIdRef = useRef(0);
   const promptPersistTimeoutRef = useRef<number | undefined>(undefined);
 
+  // Each step of the upload→extract→preview workflow is a mutation. They carry no
+  // onSuccess cache effects: the sequence, the per-step UI status, and the
+  // workflowIdRef cancellation below stay imperative, so behaviour is unchanged —
+  // mutations just manage the in-flight call. mutate*Async rejects on error like
+  // the direct calls did, so the existing try/catch flow is preserved.
+  const { mutateAsync: requestUploadUrl } = useMutation({
+    mutationFn: ({ sessionId, contentType, bytes }: { sessionId: string; contentType: string; bytes: number }) =>
+      requestProblemImageUploadUrl(sessionId, contentType, bytes)
+  });
+  const { mutateAsync: uploadToR2 } = useMutation({
+    mutationFn: ({ uploadUrl, blob, contentType }: { uploadUrl: string; blob: Blob; contentType: string }) =>
+      uploadProblemImageToR2(uploadUrl, blob, contentType)
+  });
+  const { mutateAsync: extractQuestion } = useMutation({
+    mutationFn: ({ sessionId, objectKey }: { sessionId: string; objectKey: string }) =>
+      extractProblemQuestion(sessionId, objectKey)
+  });
+  const { mutateAsync: requestPreviewUrl } = useMutation({
+    mutationFn: ({ sessionId, objectKey }: { sessionId: string; objectKey: string }) =>
+      requestProblemImagePreviewUrl(sessionId, objectKey)
+  });
+  const { mutateAsync: persistSession } = useMutation({
+    mutationFn: ({ sessionId, request }: { sessionId: string; request: Parameters<typeof updateSession>[1] }) =>
+      updateSession(sessionId, request)
+  });
+
   const persistContext = useCallback(
     async (
       image: PreparedImage | undefined,
@@ -135,17 +163,20 @@ export function useProblemContextStep1({
         return;
       }
 
-      await updateSession(activeSessionId, {
-        ...(options.extractionNotes !== undefined ? { extractionNotes: options.extractionNotes } : {}),
-        ...(options.extractionOutcome !== undefined ? { extractionOutcome: options.extractionOutcome } : {}),
-        imageMeta: image ? describeImageMeta(image) : null,
-        imageName: image?.name ?? null,
-        imageObjectKey: nextObjectKey ?? null,
-        imagePrompt: prompt || null,
-        ...(options.promptConfirmed !== undefined ? { promptConfirmed: options.promptConfirmed } : {})
+      await persistSession({
+        sessionId: activeSessionId,
+        request: {
+          ...(options.extractionNotes !== undefined ? { extractionNotes: options.extractionNotes } : {}),
+          ...(options.extractionOutcome !== undefined ? { extractionOutcome: options.extractionOutcome } : {}),
+          imageMeta: image ? describeImageMeta(image) : null,
+          imageName: image?.name ?? null,
+          imageObjectKey: nextObjectKey ?? null,
+          imagePrompt: prompt || null,
+          ...(options.promptConfirmed !== undefined ? { promptConfirmed: options.promptConfirmed } : {})
+        }
       });
     },
-    [activeSessionId]
+    [activeSessionId, persistSession]
   );
 
   const resetStep1 = useCallback(() => {
@@ -170,7 +201,7 @@ export function useProblemContextStep1({
   const loadPreviewForObjectKey = useCallback(
     async (sessionId: string, nextObjectKey: string, workflowId: number) => {
       try {
-        const preview = await requestProblemImagePreviewUrl(sessionId, nextObjectKey);
+        const preview = await requestPreviewUrl({ sessionId, objectKey: nextObjectKey });
 
         if (workflowId !== workflowIdRef.current) {
           return;
@@ -187,7 +218,7 @@ export function useProblemContextStep1({
         logEvent("Problem image preview failed", errorLogValue(error));
       }
     },
-    [logEvent]
+    [logEvent, requestPreviewUrl]
   );
 
   const applyExtractionResult = useCallback(
@@ -247,7 +278,7 @@ export function useProblemContextStep1({
       setPromptConfirmed(false);
 
       try {
-        const result = await extractProblemQuestion(sessionId, nextObjectKey);
+        const result = await extractQuestion({ sessionId, objectKey: nextObjectKey });
         await applyExtractionResult(result, workflowId, image, nextObjectKey);
       } catch (error) {
         if (workflowId !== workflowIdRef.current) {
@@ -261,7 +292,7 @@ export function useProblemContextStep1({
         logEvent("Question extraction failed", errorLogValue(error));
       }
     },
-    [applyExtractionResult, logEvent, setStatus]
+    [applyExtractionResult, extractQuestion, logEvent, setStatus]
   );
 
   const uploadPreparedImage = useCallback(
@@ -279,7 +310,11 @@ export function useProblemContextStep1({
 
       let upload;
       try {
-        upload = await requestProblemImageUploadUrl(sessionId, preparedImageMimeType, image.size);
+        upload = await requestUploadUrl({
+          sessionId,
+          contentType: preparedImageMimeType,
+          bytes: image.size
+        });
       } catch (error) {
         logEvent("Problem image upload URL failed", errorLogValue(error));
         throw error;
@@ -290,11 +325,11 @@ export function useProblemContextStep1({
       }
 
       try {
-        await uploadProblemImageToR2(
-          upload.uploadUrl,
-          dataUrlToBlob(image.dataUrl),
-          preparedImageMimeType
-        );
+        await uploadToR2({
+          uploadUrl: upload.uploadUrl,
+          blob: dataUrlToBlob(image.dataUrl),
+          contentType: preparedImageMimeType
+        });
       } catch (error) {
         logEvent("Problem image R2 upload failed", errorLogValue(error));
         throw error;
@@ -319,7 +354,7 @@ export function useProblemContextStep1({
 
       return upload.objectKey;
     },
-    [logEvent]
+    [logEvent, requestUploadUrl, uploadToR2]
   );
 
   const uploadAndExtract = useCallback(
