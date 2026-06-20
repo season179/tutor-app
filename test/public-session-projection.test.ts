@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   toPublicActiveStep,
   toPublicSessionDetail
-} from "../dist/session-types.js";
+} from "../dist/modules/sessions/session-types.js";
 
 const fullActiveStep = {
   ask: "How many stickers does each friend get?",

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { ProposedTutorAction } from "../src/tutor-action.ts";
-import { validateTutorAction } from "../dist/tutor-action-validator.js";
+import type { ProposedTutorAction } from "../src/modules/tutoring/tutor-action.ts";
+import { validateTutorAction } from "../dist/modules/tutoring/tutor-action-validator.js";
 
 function action(partial: Partial<ProposedTutorAction>): ProposedTutorAction {
   return {

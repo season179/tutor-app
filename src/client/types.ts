@@ -1,7 +1,7 @@
-import type { ExtractionOutcome } from "../problem-context/problem-context-types.js";
-import type { SessionImageMeta, TutorSessionStatus, TutorSessionSummary } from "../session-types.js";
-import type { VoiceClientAdapter } from "../voice-client-adapter.js";
-import type { VoiceSessionDescriptor } from "../voice-types.js";
+import type { ExtractionOutcome } from "../modules/problems/problem-context-types.js";
+import type { SessionImageMeta, TutorSessionStatus, TutorSessionSummary } from "../modules/sessions/session-types.js";
+import type { VoiceClientAdapter } from "./lib/voice-client-adapter.js";
+import type { VoiceSessionDescriptor } from "../modules/voice/voice-types.js";
 
 export type StatusTone = "ready" | "working" | "connected" | "error";
 
@@ -62,4 +62,4 @@ export const sidebarCollapsedStorageKey = "ai-tutor.sidebar-collapsed";
 
 export const rightSidebarCollapsedStorageKey = "ai-tutor.right-sidebar-collapsed";
 
-export { defaultImagePrompt } from "../voice-types.js";
+export { defaultImagePrompt } from "../modules/voice/voice-types.js";

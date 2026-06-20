@@ -2,7 +2,7 @@ import {
   studentTurnEventMessage,
   tutorTurnEventMessage,
   type SessionEventRecord
-} from "../../session-types.js";
+} from "../../modules/sessions/session-types.js";
 
 export type TranscriptRole = "coach" | "child";
 

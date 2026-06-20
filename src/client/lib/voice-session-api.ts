@@ -1,9 +1,9 @@
-import { parseVoiceSessionDescriptor } from "../../voice-session-schema.js";
+import { parseVoiceSessionDescriptor } from "../../modules/voice/voice-session-schema.js";
 import {
   voiceSessionPath,
   type CreateVoiceSessionRequest,
   type VoiceSessionDescriptor
-} from "../../voice-types.js";
+} from "../../modules/voice/voice-types.js";
 import { jsonRequestInit } from "./json-request.js";
 import { readJsonResponse } from "./read-json-response.js";
 

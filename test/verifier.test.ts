@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deriveFirstCheckableStep } from "../dist/active-step.js";
-import { gradeStudentTurn, shouldGradeTurn } from "../dist/verifier.js";
-import type { ProblemFrame } from "../src/problem-context/problem-frame.ts";
+import { deriveFirstCheckableStep } from "../dist/modules/tutoring/active-step.js";
+import { gradeStudentTurn, shouldGradeTurn } from "../dist/modules/tutoring/verifier.js";
+import type { ProblemFrame } from "../src/modules/problems/problem-frame.ts";
 
 const env = {
   OPENAI_API_KEY: "test-key",

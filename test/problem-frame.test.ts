@@ -5,8 +5,8 @@ import {
   frameContainsComputedSolution,
   scrubComputedSolutionFromFrame,
   scrubComputedSolutionFromText
-} from "../dist/problem-context/problem-frame.js";
-import { buildProblemFrame } from "../dist/problem-context/question-extraction-service.js";
+} from "../dist/modules/problems/problem-frame.js";
+import { buildProblemFrame } from "../dist/modules/problems/question-extraction-service.js";
 
 test("frameContainsComputedSolution flags numeric-only unknown targets", () => {
   const frame = buildProblemFrame({

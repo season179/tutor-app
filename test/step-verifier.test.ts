@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deriveFirstCheckableStep } from "../dist/active-step.js";
-import { llmStepVerdict, unknownStepVerdict, verifyActiveStep } from "../dist/step-verifier.js";
-import type { ProblemFrame } from "../src/problem-context/problem-frame.ts";
+import { deriveFirstCheckableStep } from "../dist/modules/tutoring/active-step.js";
+import { llmStepVerdict, unknownStepVerdict, verifyActiveStep } from "../dist/modules/tutoring/step-verifier.js";
+import type { ProblemFrame } from "../src/modules/problems/problem-frame.ts";
 
 const sharingFrame: ProblemFrame = {
   diagramDescription: null,

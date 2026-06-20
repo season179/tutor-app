@@ -1,5 +1,5 @@
-import type { ComprehensionGateStatus, SessionPhase } from "../../tutor-action.js";
-import { isGateComplete } from "../../phase-policy.js";
+import type { ComprehensionGateStatus, SessionPhase } from "../../modules/tutoring/tutor-action.js";
+import { isGateComplete } from "../../modules/tutoring/phase-policy.js";
 
 /**
  * The phase rail (the "Spine") collapses the canonical ten phases into the four

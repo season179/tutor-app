@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deriveFinalAnswerCheck, deriveFirstCheckableStep } from "../dist/active-step.js";
-import type { ProblemFrame } from "../src/problem-context/problem-frame.ts";
+import { deriveFinalAnswerCheck, deriveFirstCheckableStep } from "../dist/modules/tutoring/active-step.js";
+import type { ProblemFrame } from "../src/modules/problems/problem-frame.ts";
 
 function wordProblem(overrides: Partial<ProblemFrame>): ProblemFrame {
   return {

@@ -1,13 +1,13 @@
 import {
   parseVoicePipelineTurnResponse
-} from "../../voice-session-schema.js";
+} from "../../modules/voice/voice-session-schema.js";
 import {
   voiceTurnPath,
   type VoicePipelineAudioInput,
   type VoicePipelineTurnRequest,
   type VoicePipelineTurnResponse,
   type VoicePreparedImage
-} from "../../voice-types.js";
+} from "../../modules/voice/voice-types.js";
 import { jsonRequestInit } from "./json-request.js";
 import { readJsonResponse } from "./read-json-response.js";
 

@@ -4,9 +4,9 @@ import {
   goalStatusFromDetail,
   outputLanguageLabelFromContext,
   pendingHintFromEvents
-} from "../../live-session-projection.js";
-import { sessionPhases, type ComprehensionGateStatus, type SessionPhase, type SupportLevel } from "../../tutor-action.js";
-import type { VoicePipelineSessionState } from "../../voice-types.js";
+} from "../../modules/sessions/live-session-projection.js";
+import { sessionPhases, type ComprehensionGateStatus, type SessionPhase, type SupportLevel } from "../../modules/tutoring/tutor-action.js";
+import type { VoicePipelineSessionState } from "../../modules/voice/voice-types.js";
 import { getSession } from "../lib/session-api.js";
 import { toTranscriptTurns, type TranscriptTurn } from "../lib/transcript.js";
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { checkGateRestatement, checkGateStage } from "../dist/gate-checker.js";
+import { checkGateRestatement, checkGateStage } from "../dist/modules/tutoring/gate-checker.js";
 
 const env = {
   OPENAI_API_KEY: "test-key",

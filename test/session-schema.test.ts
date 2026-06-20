@@ -7,7 +7,7 @@ import {
   parseCreateTutorSessionRequest,
   parseUpdateTutorSessionRequest,
   updateTutorSessionRequestSchema
-} from "../dist/session-schema.js";
+} from "../dist/modules/sessions/session-schema.js";
 
 test("createTutorSessionRequestSchema accepts an empty object", () => {
   assert.deepEqual(createTutorSessionRequestSchema.parse({}), {});

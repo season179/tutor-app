@@ -6,32 +6,32 @@
 // `dist/` — e.g. `MemorySessionStore` and `handleVoicePipelineTurnWithStore`.
 // It is not the dev server. To run the app locally use `pnpm dev`.
 
-export { transferSessionsOnLink } from "./auth.js";
-export { MemorySessionStore } from "./memory-session-store.js";
-export { defaultRealtimeModel, defaultRealtimeVoice } from "./realtime-token.js";
-export { defaultVoiceBackend } from "./voice-session-service.js";
+export { transferSessionsOnLink } from "./modules/auth/auth.js";
+export { MemorySessionStore } from "./modules/sessions/memory-session-store.js";
+export { defaultRealtimeModel, defaultRealtimeVoice } from "./modules/auth/realtime-token.js";
+export { defaultVoiceBackend } from "./modules/voice/voice-session-service.js";
 export {
   defaultTranscribeModel,
   defaultTtsModel,
   defaultTtsVoice,
   defaultTutorModel
-} from "./voice-pipeline-service.js";
-export { maxJsonRequestBodyBytes } from "./session-handler.js";
+} from "./modules/voice/voice-pipeline-service.js";
+export { maxJsonRequestBodyBytes } from "./modules/sessions/session-handler.js";
 export {
   handleExtractQuestionRequest,
   handlePreviewUrlRequest,
   handleUploadUrlRequest
-} from "./problem-context/problem-context-handler.js";
+} from "./modules/problems/problem-context-handler.js";
 export {
   createProblemImageObjectKey,
   isOwnedProblemImageKey
-} from "./problem-context/problem-image-store.js";
-export { extractQuestionFromImageUrl } from "./problem-context/question-extraction-service.js";
-export { maxVoiceTurnBodyBytes, voiceTurnPath } from "./voice-types.js";
-export type { JsonValue } from "./http-error.js";
-export { HttpError } from "./http-error.js";
+} from "./modules/problems/problem-image-store.js";
+export { extractQuestionFromImageUrl } from "./modules/problems/question-extraction-service.js";
+export { maxVoiceTurnBodyBytes, voiceTurnPath } from "./modules/voice/voice-types.js";
+export type { JsonValue } from "./core/http-error.js";
+export { HttpError } from "./core/http-error.js";
 export {
   goalStatusFromDetail,
   outputLanguageLabelFromContext,
   pendingHintFromEvents
-} from "./live-session-projection.js";
+} from "./modules/sessions/live-session-projection.js";

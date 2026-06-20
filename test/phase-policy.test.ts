@@ -12,7 +12,7 @@ import {
   isGateReadStatus,
   isMoveLegal,
   nextGateStatus
-} from "../dist/phase-policy.js";
+} from "../dist/modules/tutoring/phase-policy.js";
 
 test("the comprehension gate allows only the Three Reads and restate moves", () => {
   const moves = allowedMoves("frame_task");

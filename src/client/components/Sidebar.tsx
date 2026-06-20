@@ -1,4 +1,4 @@
-import type { TutorSessionStatus, TutorSessionSummary } from "../../session-types.js";
+import type { TutorSessionStatus, TutorSessionSummary } from "../../modules/sessions/session-types.js";
 import { ActionButton } from "./ActionButton.js";
 import { classNames } from "../lib/class-names.js";
 import { formatRelativeTime } from "../lib/format-relative-time.js";

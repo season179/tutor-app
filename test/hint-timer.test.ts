@@ -6,7 +6,7 @@ import {
   hintTimerEventMessage,
   hintWaitMs,
   shouldArmHintTimer
-} from "../src/session-runtime/hint-timer.ts";
+} from "../src/modules/sessions/hint-timer.ts";
 
 test("hintWaitMs matches the spec's ~2 minute struggle window", () => {
   assert.equal(hintWaitMs, 120_000);

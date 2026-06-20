@@ -11,10 +11,11 @@
   },
   "include": [
     "src/server.ts",
-    "src/tutor-action.ts",
-    "src/phase-policy.ts",
-    "src/tutor-action-validator.ts",
-    "src/session-runtime/hint-alarm.ts",
+    "src/modules/tutoring/tutor-action.ts",
+    "src/modules/tutoring/phase-policy.ts",
+    "src/modules/tutoring/tutor-action-validator.ts",
+    "src/modules/sessions/hint-alarm.ts",
+    "src/modules/voice/voice-session-handler.ts",
     "src/client/lib/phase-rail.ts"
   ]
 }

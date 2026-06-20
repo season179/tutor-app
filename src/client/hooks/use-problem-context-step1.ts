@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 
-import type { ExtractionOutcome } from "../../problem-context/problem-context-types.js";
-import type { SessionImageMeta } from "../../session-types.js";
-import { maxProblemImageBytes } from "../../problem-context/problem-context-types.js";
+import type { ExtractionOutcome } from "../../modules/problems/problem-context-types.js";
+import type { SessionImageMeta } from "../../modules/sessions/session-types.js";
+import { maxProblemImageBytes } from "../../modules/problems/problem-context-types.js";
 import { errorLogValue, errorMessage } from "../lib/error-message.js";
 import {
   describePreparedImage,

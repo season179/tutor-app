@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deriveFinalAnswerCheck } from "../dist/active-step.js";
+import { deriveFinalAnswerCheck } from "../dist/modules/tutoring/active-step.js";
 import {
   hasSubjectLanguageOutput,
   outputLanguageLabel,
   requiresSubjectLanguage,
   verifyAnswerCheck
-} from "../dist/answer-checker.js";
-import type { ProblemFrame } from "../src/problem-context/problem-frame.ts";
+} from "../dist/modules/tutoring/answer-checker.js";
+import type { ProblemFrame } from "../src/modules/problems/problem-frame.ts";
 
 const sharingFrame: ProblemFrame = {
   diagramDescription: null,

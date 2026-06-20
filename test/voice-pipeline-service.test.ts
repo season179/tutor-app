@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MemorySessionStore } from "../dist/memory-session-store.js";
-import { handleVoicePipelineTurnWithStore } from "../dist/voice-pipeline-service.js";
-import type { RequestContext } from "../src/request-context.ts";
+import { MemorySessionStore } from "../dist/modules/sessions/memory-session-store.js";
+import { handleVoicePipelineTurnWithStore } from "../dist/modules/voice/voice-pipeline-service.js";
+import type { RequestContext } from "../src/core/request-context.ts";
 
 const ownerKey = "access:test-user";
 
@@ -47,8 +47,8 @@ const sharingFrame = {
 };
 
 function sessionState(
-  overrides: Partial<import("../src/voice-types.ts").VoicePipelineSessionState>
-): import("../src/voice-types.ts").VoicePipelineSessionState {
+  overrides: Partial<import("../src/modules/voice/voice-types.ts").VoicePipelineSessionState>
+): import("../src/modules/voice/voice-types.ts").VoicePipelineSessionState {
   return {
     currentPhase: "session_open",
     focusAsk: null,

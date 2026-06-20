@@ -5,9 +5,9 @@ import {
   goalStatusFromDetail,
   outputLanguageLabelFromContext,
   pendingHintFromEvents
-} from "../dist/live-session-projection.js";
-import { hintTimerEventMessage } from "../src/session-runtime/hint-timer.ts";
-import { studentTurnEventMessage } from "../src/session-types.ts";
+} from "../dist/modules/sessions/live-session-projection.js";
+import { hintTimerEventMessage } from "../src/modules/sessions/hint-timer.ts";
+import { studentTurnEventMessage } from "../src/modules/sessions/session-types.ts";
 
 test("pendingHintFromEvents returns the latest idle nudge text", () => {
   const hint = pendingHintFromEvents([

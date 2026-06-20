@@ -4,7 +4,7 @@ import {
   toTutorSessionSummary,
   type TutorSessionRecord,
   type TutorSessionSummary
-} from "../../session-types.js";
+} from "../../modules/sessions/session-types.js";
 import { errorMessage } from "../lib/error-message.js";
 import { formatEventEntry } from "../lib/format-event-entry.js";
 import {

@@ -2,12 +2,12 @@ import type {
   ExtractQuestionResponse,
   PreviewUrlResponse,
   UploadUrlResponse
-} from "../../problem-context/problem-context-types.js";
+} from "../../modules/problems/problem-context-types.js";
 import {
   problemContextExtractQuestionPath,
   problemContextPreviewUrlPath,
   problemContextUploadUrlPath
-} from "../../problem-context/problem-context-types.js";
+} from "../../modules/problems/problem-context-types.js";
 import { jsonRequestInit } from "./json-request.js";
 import { readJsonResponse } from "./read-json-response.js";
 

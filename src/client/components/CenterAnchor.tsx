@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 
-import type { ComprehensionGateStatus, SessionPhase } from "../../tutor-action.js";
+import type { ComprehensionGateStatus, SessionPhase } from "../../modules/tutoring/tutor-action.js";
 import { UnifiedComposer } from "./UnifiedComposer.js";
 
 type CenterAnchorProps = {

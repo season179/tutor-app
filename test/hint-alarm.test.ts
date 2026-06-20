@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MemorySessionStore } from "../dist/memory-session-store.js";
-import { runIdleHintAlarm } from "../dist/session-runtime/hint-alarm.js";
-import { hintTimerEventMessage, hintWaitMs } from "../dist/session-runtime/hint-timer.js";
+import { MemorySessionStore } from "../dist/modules/sessions/memory-session-store.js";
+import { runIdleHintAlarm } from "../dist/modules/sessions/hint-alarm.js";
+import { hintTimerEventMessage, hintWaitMs } from "../dist/modules/sessions/hint-timer.js";
 
 const ownerKey = "access:user-a";
 

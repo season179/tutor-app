@@ -12,7 +12,7 @@ import {
 import {
   buildProblemFrame,
   normalizeExtractionResponse
-} from "../dist/problem-context/question-extraction-service.js";
+} from "../dist/modules/problems/question-extraction-service.js";
 
 test("mapOutcomeToExtractionStatus maps review and empty outcomes", () => {
   assert.equal(mapOutcomeToExtractionStatus("extracted"), "ready");

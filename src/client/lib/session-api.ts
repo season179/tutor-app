@@ -5,7 +5,7 @@ import {
   type PublicTutorSessionRecord,
   type TutorSessionSummary,
   type UpdateTutorSessionRequest
-} from "../../session-types.js";
+} from "../../modules/sessions/session-types.js";
 import { jsonRequestInit } from "./json-request.js";
 import { readJsonResponse } from "./read-json-response.js";
 

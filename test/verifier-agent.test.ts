@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { runVerifierAgent } from "../dist/verifier-agent.js";
-import type { ProblemFrame } from "../src/problem-context/problem-frame.ts";
+import { runVerifierAgent } from "../dist/modules/tutoring/verifier-agent.js";
+import type { ProblemFrame } from "../src/modules/problems/problem-frame.ts";
 
 const env = {
   OPENAI_API_KEY: "test-key",

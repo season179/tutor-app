@@ -7,12 +7,12 @@ import {
   parseVoiceSessionDescriptor,
   serializeVoicePipelineTurnResponse,
   serializeVoiceSessionDescriptor
-} from "../dist/voice-session-schema.js";
+} from "../dist/modules/voice/voice-session-schema.js";
 import type {
   OpenAIVoicePipelineSessionDescriptor,
   OpenAIRealtimeSessionDescriptor,
   VoicePipelineTurnResponse
-} from "../src/voice-types.ts";
+} from "../src/modules/voice/voice-types.ts";
 
 const tutorPolicy = {
   agentName: "Tutor",

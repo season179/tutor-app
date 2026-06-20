@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   applyTutorSessionUpdate,
   type TutorSessionRecord
-} from "../src/session-types.ts";
+} from "../src/modules/sessions/session-types.ts";
 
 const baseSession: TutorSessionRecord = {
   activeStep: null,

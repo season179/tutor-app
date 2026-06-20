@@ -3,8 +3,8 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import {
   createVoiceClientAdapter,
   type VoiceClientEvent
-} from "../../voice-client-adapter.js";
-import type { VoiceSessionDescriptor, VoicePipelineSessionState } from "../../voice-types.js";
+} from "../lib/voice-client-adapter.js";
+import type { VoiceSessionDescriptor, VoicePipelineSessionState } from "../../modules/voice/voice-types.js";
 import { errorLogValue, errorMessage } from "../lib/error-message.js";
 import { updateSession } from "../lib/session-api.js";
 import { requestVoiceSessionDescriptor } from "../lib/voice-session-api.js";

@@ -1,4 +1,4 @@
-import type { ExtractionOutcome } from "../../problem-context/problem-context-types.js";
+import type { ExtractionOutcome } from "../../modules/problems/problem-context-types.js";
 
 export type ExtractionStatus = "extracting" | "failed" | "idle" | "no_question" | "needs_review" | "ready";
 

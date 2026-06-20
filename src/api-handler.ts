@@ -1,27 +1,27 @@
-import { type Auth } from "./auth.js";
-import { HttpError, type JsonValue } from "./http-error.js";
+import { type Auth } from "./modules/auth/auth.js";
+import { HttpError, type JsonValue } from "./core/http-error.js";
 import {
   createProblemContextHandlerEnv,
   handleExtractQuestionRequest,
   handlePreviewUrlRequest,
   handleUploadUrlRequest,
   type ProblemContextHandlerEnv
-} from "./problem-context/problem-context-handler.js";
+} from "./modules/problems/problem-context-handler.js";
 import {
   problemContextExtractQuestionPath,
   problemContextPreviewUrlPath,
   problemContextUploadUrlPath
-} from "./problem-context/problem-context-types.js";
-import type { SessionStore } from "./session-store.js";
-import { handleSessionsRequest, readJsonBody } from "./session-handler.js";
-import { sessionsPath } from "./session-types.js";
-import type { ProcessTurnPayload, SessionRuntimeDO } from "./session-runtime/session-runtime-do.js";
-import { createVoiceSessionWithStore } from "./voice-session-handler.js";
-import { handleVoicePipelineTurnWithStore } from "./voice-pipeline-service.js";
-import { parseVoicePipelineTurnRequest } from "./voice-session-schema.js";
-import { type VoiceSessionServiceEnv } from "./voice-session-service.js";
-import { maxVoiceTurnBodyBytes, voiceSessionPath, voiceTurnPath, type VoicePipelineTurnResponse } from "./voice-types.js";
-import { buildOwnerKey, type AuthIdentity, type RequestContext } from "./request-context.js";
+} from "./modules/problems/problem-context-types.js";
+import type { SessionStore } from "./modules/sessions/session-store.js";
+import { handleSessionsRequest, readJsonBody } from "./modules/sessions/session-handler.js";
+import { sessionsPath } from "./modules/sessions/session-types.js";
+import type { ProcessTurnPayload, SessionRuntimeDO } from "./modules/sessions/session-runtime-do.js";
+import { createVoiceSessionWithStore } from "./modules/voice/voice-session-handler.js";
+import { handleVoicePipelineTurnWithStore } from "./modules/voice/voice-pipeline-service.js";
+import { parseVoicePipelineTurnRequest } from "./modules/voice/voice-session-schema.js";
+import { type VoiceSessionServiceEnv } from "./modules/voice/voice-session-service.js";
+import { maxVoiceTurnBodyBytes, voiceSessionPath, voiceTurnPath, type VoicePipelineTurnResponse } from "./modules/voice/voice-types.js";
+import { buildOwnerKey, type AuthIdentity, type RequestContext } from "./core/request-context.js";
 
 export type ApiHandlerEnv = VoiceSessionServiceEnv & ProblemContextHandlerEnv;
 
