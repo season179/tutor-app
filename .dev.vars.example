@@ -1,10 +1,15 @@
 # Used by `wrangler dev` (local development). Copy to `.dev.vars`.
 #
-# `pnpm dev` runs the app behind Portless at https://ai-tutor.dev (proxying to
-# the wrangler dev server on port 8787). One-time setup:
-#   1. pnpm portless proxy start --tld dev     # sets + persists the .dev TLD
-#   2. pnpm portless trust                      # trust the local CA (HTTPS)
-# The .dev TLD is shared across all Portless apps and persists across restarts.
+# `pnpm dev` runs the app behind Portless at https://ai-tutor.dev, proxying to
+# the wrangler dev server on a port Portless auto-assigns (no fixed 8787).
+# The .dev TLD is required because Google OAuth rejects *.localhost redirect URIs.
+#
+# The TLD belongs to the running Portless proxy (one shared daemon for all apps);
+# whichever app starts it first sets the TLD. Persist it globally so a stray
+# `pnpm dev` can't revert it to .localhost. One-time setup:
+#   1. echo 'export PORTLESS_TLD=dev' >> ~/.zshenv     # persist .dev for every proxy start
+#   2. pnpm portless proxy stop && pnpm dev            # restart proxy so .dev takes effect
+#   3. pnpm portless trust && pnpm portless hosts sync # trust local CA + map ai-tutor.dev -> 127.0.0.1
 
 OPENAI_API_KEY=your-openai-api-key
 
