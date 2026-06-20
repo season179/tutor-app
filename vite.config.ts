@@ -11,6 +11,11 @@ export default defineConfig({
     // Use an explicit presence check so a deliberate PORT=0 or empty PORT isn't
     // silently coerced to 3000 by `||`.
     port: process.env.PORT ? Number(process.env.PORT) : 3000,
+    // Honour the HOST Portless injects (127.0.0.1). Vite does NOT read the HOST
+    // env var on its own, and its default `localhost` resolves to IPv6 ::1 on
+    // macOS/Node — so Portless, which dials IPv4 127.0.0.1, would get ECONNREFUSED
+    // and surface a 502. Binding to the injected HOST keeps the two in sync.
+    host: process.env.HOST || "localhost",
     // Portless proxies to the exact port it assigned, so if that port is taken
     // Vite must fail loudly rather than drift to the next free one (which would
     // leave Portless routing to a dead port).
