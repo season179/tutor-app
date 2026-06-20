@@ -1,8 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { authenticateServerRequest, workerEnv } from "../../../server-request-context.js";
-import { bodySizeCapMiddleware } from "../../../core/body-cap-middleware.js";
-import { errorStatusMiddleware } from "../../../core/error-status-middleware.js";
+import { writeServerFnMiddleware } from "../../../core/server-fn-middleware.js";
 import {
   createProblemContextHandlerEnv,
   handleExtractQuestionRequest,
@@ -24,7 +23,7 @@ import type {
 // R2) plus the error-status mapping middleware.
 
 export const requestUploadUrlFn = createServerFn({ method: "POST" })
-  .middleware([bodySizeCapMiddleware, errorStatusMiddleware])
+  .middleware(writeServerFnMiddleware)
   .validator((input: UploadUrlRequest) => input)
   .handler(async ({ data }) => {
     const { context, store } = await authenticateServerRequest();
@@ -32,7 +31,7 @@ export const requestUploadUrlFn = createServerFn({ method: "POST" })
   });
 
 export const extractQuestionFn = createServerFn({ method: "POST" })
-  .middleware([bodySizeCapMiddleware, errorStatusMiddleware])
+  .middleware(writeServerFnMiddleware)
   .validator((input: ExtractQuestionRequest) => input)
   .handler(async ({ data }) => {
     const { context, store } = await authenticateServerRequest();
@@ -40,7 +39,7 @@ export const extractQuestionFn = createServerFn({ method: "POST" })
   });
 
 export const requestPreviewUrlFn = createServerFn({ method: "POST" })
-  .middleware([bodySizeCapMiddleware, errorStatusMiddleware])
+  .middleware(writeServerFnMiddleware)
   .validator((input: PreviewUrlRequest) => input)
   .handler(async ({ data }) => {
     const { context, store } = await authenticateServerRequest();

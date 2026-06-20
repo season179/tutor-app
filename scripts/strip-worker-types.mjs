@@ -14,7 +14,8 @@
 //
 // The server/worker tsconfigs still load the original `worker-configuration.d.ts`
 // in full. Run this whenever `wrangler types` is run (it's wired into the type
-// generation step; `check:worker-types` regenerates the source first).
+// generation step; `check:worker-types` first verifies the committed source is current
+// via `wrangler types --check`, which only checks and does not itself regenerate it).
 import { readFileSync, writeFileSync } from "node:fs";
 
 const SOURCE = "worker-configuration.d.ts";
@@ -70,6 +71,19 @@ for (let i = 0; i < lines.length; ) {
     continue;
   }
   out.push(lines[i++]);
+}
+
+// Fail loudly if the strip matched nothing (or only some) of the expected declarations.
+// `wrangler types` changing its output format (an `export` prefix, indentation, a
+// renamed type) would otherwise make `headerRe` silently match zero blocks, write out
+// the un-stripped file, and re-merge workerd's HTMLRewriter globals into the DOM lib —
+// reintroducing the exact `Element.append()` widening this script exists to prevent.
+if (removed !== DOM_COLLIDING.size) {
+  throw new Error(
+    `strip-worker-types: expected to strip ${DOM_COLLIDING.size} DOM-colliding declarations but matched ${removed}. ` +
+      `The generated declaration format likely changed, so the client types would re-merge workerd's HTMLRewriter ` +
+      `globals into the DOM lib. Update headerRe / DOM_COLLIDING instead of shipping the un-stripped file.`
+  );
 }
 
 writeFileSync(DEST, `${out.join("\n")}\n`);

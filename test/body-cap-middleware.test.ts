@@ -38,3 +38,12 @@ test("assertWithinRequestBodyBytes treats null/undefined as the empty-payload ca
   assert.doesNotThrow(() => assertWithinRequestBodyBytes(null));
   assert.doesNotThrow(() => assertWithinRequestBodyBytes(undefined));
 });
+
+test("assertWithinRequestBodyBytes measures UTF-8 bytes, not UTF-16 code units", () => {
+  // "中" is one UTF-16 code unit but three UTF-8 bytes. This payload's `.length` stays
+  // under the cap while its real wire size is well over — a code-unit cap would wrongly
+  // accept it; the byte cap (matching the old readLimitedTextBody guard) must reject it.
+  const payload = { s: "中".repeat(6000) };
+  assert.ok(JSON.stringify(payload).length < maxJsonRequestBodyBytes);
+  assert.throws(() => assertWithinRequestBodyBytes(payload), HttpError);
+});

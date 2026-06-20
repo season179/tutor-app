@@ -18,8 +18,9 @@ const rateLimitRetryAfterSeconds = "60";
 // the emitted HTTP status matches the semantic error. A 429 also restores the
 // `Retry-After` header the old Worker entry set.
 //
-// Registered per-fn (via a shared `serverFnMiddleware` array on every server fn)
-// rather than globally: global request/function middleware is currently buggy in
+// Registered per-fn (via the shared `serverFnMiddleware`/`writeServerFnMiddleware`
+// arrays in core/server-fn-middleware.ts) on every server fn rather than globally:
+// global request/function middleware is currently buggy in
 // TanStack Start (#5107 setResponseStatus no-ops on throw, #5239 global middleware
 // fires multiple times, #5407 status/headers set in global middleware don't
 // propagate). Per-fn function middleware is the well-trodden path and avoids all

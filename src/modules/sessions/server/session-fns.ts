@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { authenticateServerRequest } from "../../../server-request-context.js";
-import { bodySizeCapMiddleware } from "../../../core/body-cap-middleware.js";
-import { errorStatusMiddleware } from "../../../core/error-status-middleware.js";
+import {
+  serverFnMiddleware,
+  writeServerFnMiddleware
+} from "../../../core/server-fn-middleware.js";
 import {
   appendSessionEvent,
   createSession,
@@ -25,14 +27,14 @@ import type {
 // that the old /api/* handler enforced before Phase 4.
 
 export const listSessionsFn = createServerFn({ method: "GET" })
-  .middleware([errorStatusMiddleware])
+  .middleware(serverFnMiddleware)
   .handler(async () => {
     const { context, store } = await authenticateServerRequest();
     return listSessions(context, store);
   });
 
 export const createSessionFn = createServerFn({ method: "POST" })
-  .middleware([bodySizeCapMiddleware, errorStatusMiddleware])
+  .middleware(writeServerFnMiddleware)
   .validator((input: { title?: string }) => input)
   .handler(async ({ data }) => {
     const { context, store } = await authenticateServerRequest();
@@ -40,7 +42,7 @@ export const createSessionFn = createServerFn({ method: "POST" })
   });
 
 export const getSessionFn = createServerFn({ method: "GET" })
-  .middleware([errorStatusMiddleware])
+  .middleware(serverFnMiddleware)
   .validator((input: { sessionId: string }) => input)
   .handler(async ({ data }) => {
     const { context, store } = await authenticateServerRequest();
@@ -48,7 +50,7 @@ export const getSessionFn = createServerFn({ method: "GET" })
   });
 
 export const updateSessionFn = createServerFn({ method: "POST" })
-  .middleware([bodySizeCapMiddleware, errorStatusMiddleware])
+  .middleware(writeServerFnMiddleware)
   .validator((input: { request: UpdateTutorSessionRequest; sessionId: string }) => input)
   .handler(async ({ data }) => {
     const { context, store } = await authenticateServerRequest();
@@ -56,7 +58,7 @@ export const updateSessionFn = createServerFn({ method: "POST" })
   });
 
 export const appendSessionEventFn = createServerFn({ method: "POST" })
-  .middleware([bodySizeCapMiddleware, errorStatusMiddleware])
+  .middleware(writeServerFnMiddleware)
   .validator((input: { request: AppendSessionEventRequest; sessionId: string }) => input)
   .handler(async ({ data }) => {
     const { context, store } = await authenticateServerRequest();

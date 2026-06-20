@@ -7,12 +7,14 @@ import { HttpError } from "./http-error.js";
 // `readLimitedTextBody` before Phase 4 moved everything onto server functions.
 //
 // TanStack Start owns body parsing, so this runs after the payload is parsed as
-// `data` rather than as it streams off the wire. Measuring `JSON.stringify(data)`
-// faithfully approximates the wire size — the /_serverFn/* body IS that JSON —
-// and still rejects an oversized write before it reaches the store/pipeline.
-// Per-fn overrides that need a different ceiling (the voice turn's 8 MB cap) stay
-// in their own fns and run alongside this; this middleware is the baseline for
-// every other write.
+// `data` rather than as it streams off the wire. We measure the UTF-8 byte length of
+// `JSON.stringify(data)` (the /_serverFn/* body IS that JSON) so the cap matches the
+// old byte-based `readLimitedTextBody` guard — counting `.length` (UTF-16 code units)
+// would under-count multi-byte content (CJK, emoji) and let a payload several times
+// the limit through. It still rejects an oversized write before it reaches the
+// store/pipeline. Per-fn overrides that need a different ceiling (the voice turn's
+// 8 MB cap) stay in their own fns and run alongside this; this middleware is the
+// baseline for every other write.
 export const maxJsonRequestBodyBytes = 16_384;
 
 /**
@@ -21,7 +23,7 @@ export const maxJsonRequestBodyBytes = 16_384;
  * the TanStack RPC machinery.
  */
 export function assertWithinRequestBodyBytes(data: unknown): void {
-  const size = JSON.stringify(data ?? null).length;
+  const size = new TextEncoder().encode(JSON.stringify(data ?? null)).length;
   if (size > maxJsonRequestBodyBytes) {
     throw new HttpError(413, "Request body was too large");
   }
