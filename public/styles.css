@@ -1089,6 +1089,14 @@ p {
   display: flex;
   gap: 0.95rem;
   padding: 0.95rem 1.05rem;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+/* a file is hovering over the zone: solidify the border and tint the surface */
+.dropzone--dragging {
+  background: var(--surface);
+  border-color: var(--primary);
+  border-style: solid;
 }
 
 .dz-icon {

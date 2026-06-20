@@ -53,7 +53,9 @@ export function ProblemContextPanel({
 }: ProblemContextPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const zoomRef = useRef<HTMLDialogElement>(null);
+  const dragDepthRef = useRef(0);
   const [expanded, setExpanded] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // A new image (previewUrl change) re-folds an expanded pin so the next problem
   // opens in review. Confirming does NOT collapse: once "Show problem" expands a
@@ -71,6 +73,47 @@ export function ProblemContextPanel({
   const openFilePicker = () => fileInputRef.current?.click();
   const openZoom = () => zoomRef.current?.showModal();
 
+  // Drag-and-drop onto the empty dropzone. dragenter/dragleave fire for every
+  // child the pointer crosses, so a depth counter (not a bare boolean) keeps the
+  // highlight steady instead of flickering over the icon and button.
+  const handleDragEnter = (event: React.DragEvent) => {
+    if (fileInputDisabled || !dragHasFile(event.dataTransfer)) {
+      return;
+    }
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    if (fileInputDisabled || !dragHasFile(event.dataTransfer)) {
+      return;
+    }
+    // Both preventDefault and dropEffect are required for the drop to fire.
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleDragLeave = () => {
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    if (fileInputDisabled) {
+      return;
+    }
+    event.preventDefault();
+    dragDepthRef.current = 0;
+    setIsDragging(false);
+    const file = firstImageFile(event.dataTransfer);
+    if (file) {
+      onFileChange(file);
+    }
+  };
+
   // Empty: no image yet, nothing in flight.
   if (!hasImage && !isUploading) {
     return (
@@ -83,13 +126,19 @@ export function ProblemContextPanel({
           inputRef={fileInputRef}
           onFileChange={onFileChange}
         />
-        <div className="dropzone">
+        <div
+          className={isDragging ? "dropzone dropzone--dragging" : "dropzone"}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <span className="dz-icon" aria-hidden="true">
             <CameraIcon />
           </span>
           <div className="dz-text">
             <h3>Add the problem</h3>
-            <p>Snap or upload a photo. Coach Echo reads the question so you can check it.</p>
+            <p>Snap, upload, or drag in a photo. Coach Echo reads the question so you can check it.</p>
           </div>
           <button
             className="pin-btn pin-btn--ghost dz-action"
@@ -250,6 +299,19 @@ export function ProblemContextPanel({
 
 function warningLabel(status: ExtractionStatus): string {
   return status === "no_question" ? "No question" : "Partial";
+}
+
+// During a drag, the OS withholds the actual files for privacy, so we read the
+// `items` list (kind/type only) to decide whether to highlight the dropzone.
+function dragHasFile(transfer: DataTransfer): boolean {
+  return Array.from(transfer.items).some((item) => item.kind === "file");
+}
+
+// On drop the files become readable. Take the first image, matching the hidden
+// input's accept="image/*"; anything else (a dragged folder, a text snippet) is
+// ignored rather than handed to the upload pipeline.
+function firstImageFile(transfer: DataTransfer): File | undefined {
+  return Array.from(transfer.files).find((file) => file.type.startsWith("image/"));
 }
 
 type HiddenFileInputProps = {
