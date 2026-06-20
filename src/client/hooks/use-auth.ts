@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+import { useMutation } from "@tanstack/react-query";
+
 import { authClient } from "../lib/auth-client.js";
 
 export type AuthUser = {
@@ -19,6 +21,20 @@ export function useAuth() {
 
   const user = session?.user as AuthUser | undefined;
   const isAnonymous = Boolean(user?.isAnonymous);
+
+  // better-auth's `useSession` is the reactive source; the three imperative
+  // actions go through mutations so their in-flight/error state is managed by
+  // Query. better-auth resolves with `{ error }` rather than throwing on auth
+  // failures, so the bootstrap still inspects `result.error` itself.
+  const { mutateAsync: signInAnonymously } = useMutation({
+    mutationFn: () => authClient.signIn.anonymous()
+  });
+  const { mutate: signInGoogle } = useMutation({
+    mutationFn: () => authClient.signIn.social({ provider: "google" })
+  });
+  const { mutate: signOutMutate } = useMutation({
+    mutationFn: () => authClient.signOut()
+  });
 
   useEffect(() => {
     if (isPending) {
@@ -46,8 +62,7 @@ export function useAuth() {
     bootstrapAttemptedRef.current = true;
     setBootstrapState("bootstrapping");
 
-    void authClient.signIn
-      .anonymous()
+    void signInAnonymously()
       .then((result) => {
         if (result.error) {
           setBootstrapState("error");
@@ -56,11 +71,11 @@ export function useAuth() {
       .catch(() => {
         setBootstrapState("error");
       });
-  }, [isPending, user]);
+  }, [isPending, signInAnonymously, user]);
 
-  const signInWithGoogle = () => authClient.signIn.social({ provider: "google" });
+  const signInWithGoogle = () => signInGoogle();
 
-  const signOut = () => authClient.signOut();
+  const signOut = () => signOutMutate();
 
   const isAuthLoading = isPending || (!user && bootstrapState !== "error");
 
