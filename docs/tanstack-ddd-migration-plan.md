@@ -185,7 +185,29 @@ structural change, behavior identical, tests stay green. `git mv` to preserve hi
 files move. **Independently valuable** — the "great folder structure" win, banked regardless of
 how far the TanStack adoption goes.
 
-### Phase 2 — Vite + Start scaffolding (build swap)
+### Phase 2 — Vite + Start scaffolding (build swap) — ✅ DONE (commit `b7d1e10`, 2026-06-20)
+Vite (`@cloudflare/vite-plugin` → `tanstackStart()` → `viteReact()`) replaced esbuild as the
+bundler + SSR engine. Added `src/router.tsx` and `src/routes/{__root,index}.tsx`; the root
+document shell replaced `public/index.html`, styles moved to `src/styles/app.css` (Vite-imported).
+The custom CF entry is **`src/worker.ts`** (not a new `server.ts` — avoids clashing with the test
+barrel and keeps `wrangler.main`): it still owns auth + voice rate-limit + the ownership-gated
+`/api/*` handler, exports `SessionRuntimeDO`, and delegates everything else to
+`startServer.fetch(request)` (Start reads CF bindings via `cloudflare:workers`, so only the
+Request is passed — the spike's 3-arg call doesn't typecheck under strict mode). The manual
+`assets` block is gone (the vite plugin wires assets). **Decision: the tutoring screen renders
+client-only (`ssr:false`)** — it's browser-stateful (audio, voice, localStorage, refs) — so Start
+SSRs only the shell. Bumped wrangler to 4.102 for the plugin peer range. Verified on miniflare:
+`GET /` returns the SSR shell + client bundle, `GET /api/*` stays worker-handled (401 JSON),
+171/171 tests, all typechecks, `wrangler deploy --dry-run` with the DO binding intact.
+
+> **MIGRATION STATUS (2026-06-20):** Paused after Phase 2 by decision — the branch
+> `feat/tanstack-ddd-migration` (DDD + Vite/Start foundation) is the review deliverable. Phases
+> 3–5 are deferred to a **follow-up branch** once the foundation is run & approved, because they
+> rewrite the *client* (Query hook ports, `/api/*`→server-fn cutover) and this app has **no
+> client/UI tests** — typecheck/build/backend-tests stay green but cannot prove the interactive
+> voice/tutoring UX. Validate that live before resuming.
+
+### Phase 2 — original spec
 Add `vite.config.ts` (`cloudflare({viteEnvironment:{name:'ssr'}})` + `tanstackStart()` +
 `viteReact()`), `src/router.tsx`, `src/routes/__root.tsx` + `index.tsx`, and the custom
 `src/server.ts` entry. Point `wrangler.main` at it; export `SessionRuntimeDO` there. Render the
