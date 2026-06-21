@@ -1,10 +1,12 @@
 import { HttpError, type JsonValue } from "../../core/http-error.js";
-import { extractOutputText, fetchOpenAiJson, requireOpenAiApiKey } from "../../providers/openai/openai-responses.js";
+import {
+  composeReasoningInput,
+  runReasoningWorkflow,
+  type ReasoningEnv
+} from "../../providers/reasoning/reasoning-binding.js";
 import type { GateStage } from "./phase-policy.js";
 import { scrubComputedSolutionFromText, type ProblemFrame } from "../problems/problem-frame.js";
 import { isJsonObject } from "../../core/schema-parser.js";
-
-export const defaultGateCheckerModel = "gpt-5.5";
 
 // The "comprehension-gate checker" marker stays in the preamble: the voice pipeline and its
 // tests identify a gate-check request by this phrase, distinct from the tutor/verifier calls.
@@ -33,43 +35,51 @@ ${gateStageRubrics[stage]}
 Return JSON only. Be generous with age-appropriate paraphrases; only reject clear misses.`;
 }
 
-const gateCheckerJsonSchema = {
-  additionalProperties: false,
-  properties: {
-    accepted: { type: "boolean" },
-    notes: { type: ["string", "null"] }
-  },
-  required: ["accepted", "notes"],
-  type: "object"
-} as const;
+/**
+ * The scrubbed, role-neutral user content both transport paths send — the problem frame
+ * (worked solution stripped), the stage being graded, and the student's words. Shared so
+ * the binding and legacy paths feed the model the exact same text.
+ */
+function gateStageUserContent(stage: GateStage, frame: ProblemFrame, trimmed: string): string {
+  return JSON.stringify(
+    {
+      problemFrame: {
+        givens: frame.quantities,
+        relationships: frame.relationships.map((relationship) =>
+          scrubComputedSolutionFromText(relationship)
+        ),
+        unknownTarget: scrubComputedSolutionFromText(frame.unknownTarget ?? "") || null,
+        visibleQuestion: scrubComputedSolutionFromText(frame.visibleQuestion)
+      },
+      read: stage,
+      studentText: trimmed
+    },
+    null,
+    2
+  );
+}
 
 export type GateCheckerVerdict = {
   accepted: boolean;
   notes: string | null;
 };
 
-export type GateCheckerEnv = {
-  OPENAI_API_KEY: string | undefined;
+export type GateCheckerEnv = ReasoningEnv & {
+  // The gate-check model specifier now lives in Worker B's REASONING_MODEL; these OpenAI
+  // model env vars are retained only for the deterministic gating the DO still does and
+  // for back-compat with callers that read them. The model call itself crosses the binding.
   OPENAI_GATE_CHECKER_MODEL?: string | undefined;
   OPENAI_TUTOR_MODEL: string | undefined;
 };
 
-type GateCheckerOptions = {
-  apiKey: string | undefined;
-  model: string;
-};
-
-export function createGateCheckerOptions(env: GateCheckerEnv): GateCheckerOptions {
-  return {
-    apiKey: env.OPENAI_API_KEY,
-    model: env.OPENAI_GATE_CHECKER_MODEL ?? env.OPENAI_TUTOR_MODEL ?? defaultGateCheckerModel
-  };
-}
-
 /**
  * Grades one read of the Three Reads gate. Each stage has its own rubric, but all share the
- * frame and the strict-JSON verdict shape. The frame is scrubbed of any worked solution before
- * it reaches the model.
+ * frame and the verdict shape. The frame is scrubbed of any worked solution before it
+ * reaches the model. The model call crosses the REASONING binding (Worker B's gate-check
+ * workflow); Worker B validates the output against the shared valibot schema and Worker A
+ * re-validates with `parseGateCheckerVerdict` (enum/trim/null-coalescing domain checks the
+ * schema alone doesn't cover). A binding failure propagates as HttpError(502) so a
+ * transient Worker B failure kills the turn before commit (the gate is not fail-soft).
  */
 export async function checkGateStage(
   stage: GateStage,
@@ -77,8 +87,6 @@ export async function checkGateStage(
   studentText: string,
   env: GateCheckerEnv
 ): Promise<GateCheckerVerdict> {
-  const options = createGateCheckerOptions(env);
-  const apiKey = requireOpenAiApiKey(options.apiKey);
   const trimmed = studentText.trim();
 
   if (!trimmed) {
@@ -89,64 +97,18 @@ export async function checkGateStage(
     return { accepted: false, notes: "Problem frame has no unknown target yet." };
   }
 
-  const payload = await fetchOpenAiJson("https://api.openai.com/v1/responses", {
-    apiKey,
-    body: JSON.stringify({
-      input: [
-        {
-          content: [
-            {
-              text: JSON.stringify(
-                {
-                  problemFrame: {
-                    givens: frame.quantities,
-                    relationships: frame.relationships.map((relationship) =>
-                      scrubComputedSolutionFromText(relationship)
-                    ),
-                    unknownTarget: scrubComputedSolutionFromText(frame.unknownTarget ?? "") || null,
-                    visibleQuestion: scrubComputedSolutionFromText(frame.visibleQuestion)
-                  },
-                  read: stage,
-                  studentText: trimmed
-                },
-                null,
-                2
-              ),
-              type: "input_text"
-            }
-          ],
-          role: "user"
-        }
-      ],
-      instructions: gateStageInstructions(stage),
-      model: options.model,
-      text: {
-        format: {
-          name: "gate_checker_verdict",
-          schema: gateCheckerJsonSchema,
-          strict: true,
-          type: "json_schema"
-        }
-      }
-    }),
-    headers: {
-      "Content-Type": "application/json"
-    },
-    method: "POST"
-  });
-
-  const outputText = extractOutputText(payload);
-
-  if (!outputText) {
-    throw new HttpError(502, "OpenAI gate-checker response did not include output text.", payload);
-  }
+  const input = composeReasoningInput(
+    gateStageInstructions(stage),
+    gateStageUserContent(stage, frame, trimmed)
+  );
+  const result = await runReasoningWorkflow("gate-check", input, env);
 
   try {
-    return parseGateCheckerVerdict(JSON.parse(outputText) as JsonValue);
+    return parseGateCheckerVerdict(result);
   } catch (error) {
     throw new HttpError(
       502,
-      "OpenAI gate-checker response was not valid JSON.",
+      "Gate-checker binding result did not match the verdict shape.",
       error instanceof Error ? error.message : String(error)
     );
   }

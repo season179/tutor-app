@@ -10,6 +10,7 @@ import type { VoicePipelineServiceEnv } from "../../src/modules/voice/voice-pipe
 import type { RequestContext } from "../../src/core/request-context.js";
 import { MemorySessionStore } from "../../src/modules/sessions/memory-session-store.js";
 import type { ProblemFrame } from "../../src/modules/problems/problem-frame.js";
+import { currentReasoningBinding } from "./fake-voice-providers.js";
 
 export const ownerKey = "access:test-user";
 
@@ -18,13 +19,19 @@ export const context: RequestContext = {
   ownerKey
 };
 
+// REASONING resolves lazily to whichever fake the test installed, so the same env object
+// works across tests without each one re-wiring the binding. (The binding is the sole
+// reasoning transport now; tests that exercise a reasoning stage must install a fake first.)
 export const voiceServiceEnv: VoicePipelineServiceEnv = {
   OPENAI_API_KEY: "test-key",
   OPENAI_GATE_CHECKER_MODEL: undefined,
   OPENAI_TRANSCRIBE_MODEL: undefined,
   OPENAI_TTS_MODEL: undefined,
   OPENAI_TTS_VOICE: undefined,
-  OPENAI_TUTOR_MODEL: undefined
+  OPENAI_TUTOR_MODEL: undefined,
+  get REASONING() {
+    return currentReasoningBinding();
+  }
 };
 
 export const problemImage = {

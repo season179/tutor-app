@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 
 import { runVerifierAgent } from "../src/modules/tutoring/verifier-agent.ts";
+import { installVoiceProviders, type VoiceProviderFake } from "./helpers/fake-voice-providers.ts";
 import type { ProblemFrame } from "../src/modules/problems/problem-frame.ts";
 
-const env = {
-  OPENAI_API_KEY: "test-key",
-  OPENAI_TUTOR_MODEL: undefined,
-  OPENAI_VERIFIER_MODEL: undefined
-};
+function env(fake: VoiceProviderFake | null) {
+  return { OPENAI_TUTOR_MODEL: undefined, OPENAI_VERIFIER_MODEL: undefined, REASONING: fake?.reasoning };
+}
+
+let fake: VoiceProviderFake | null = null;
+afterEach(() => {
+  fake?.restore();
+  fake = null;
+});
 
 const frame: ProblemFrame = {
   diagramDescription: null,
@@ -25,48 +30,23 @@ const frame: ProblemFrame = {
   visibleQuestion: "How many books are left?"
 };
 
-test("runVerifierAgent sends a strict-JSON grading request and parses the verdict", async () => {
-  const originalFetch = globalThis.fetch;
-  let sentBody = "";
+test("runVerifierAgent sends the verifier rubric over the binding and parses the verdict", async () => {
+  fake = installVoiceProviders({ verifier: { studentStatus: "correct" } });
 
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    assert.equal(String(input), "https://api.openai.com/v1/responses");
-    sentBody = String(init?.body ?? "");
-    return Response.json({
-      output_text: JSON.stringify({
-        confidence: "high",
-        correctionHint: null,
-        misconceptionKey: null,
-        studentStatus: "correct"
-      })
-    });
-  }) as typeof fetch;
+  const verdict = await runVerifierAgent(
+    { frame, kind: "final_answer", question: frame.visibleQuestion, studentText: "70 books are left" },
+    env(fake)
+  );
 
-  try {
-    const verdict = await runVerifierAgent(
-      { frame, kind: "final_answer", question: frame.visibleQuestion, studentText: "70 books are left" },
-      env
-    );
+  assert.equal(verdict.studentStatus, "correct");
+  assert.equal(verdict.confidence, "high");
+  assert.equal(verdict.correctionHint, null);
 
-    assert.equal(verdict.studentStatus, "correct");
-    assert.equal(verdict.confidence, "high");
-    assert.equal(verdict.correctionHint, null);
-
-    const body = JSON.parse(sentBody) as {
-      instructions: string;
-      text: { format: { name: string; strict: boolean } };
-    };
-    assert.match(body.instructions, /narrow answer verifier/i);
-    assert.equal(body.text.format.name, "verifier_verdict");
-    assert.equal(body.text.format.strict, true);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  const input = fake.calls.workflowInputs("verifier")[0] ?? "";
+  assert.match(input, /narrow answer verifier/i);
 });
 
 test("runVerifierAgent never sends a worked answer to the model", async () => {
-  const originalFetch = globalThis.fetch;
-  let sentBody = "";
   const leaky: ProblemFrame = {
     ...frame,
     extractedText: "How many books are left? The answer is 70.",
@@ -74,52 +54,42 @@ test("runVerifierAgent never sends a worked answer to the model", async () => {
     unknownTarget: "70"
   };
 
-  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    sentBody = String(init?.body ?? "");
-    return Response.json({
-      output_text: JSON.stringify({
-        confidence: "low",
-        correctionHint: null,
-        misconceptionKey: null,
-        studentStatus: "unknown"
-      })
-    });
-  }) as typeof fetch;
+  fake = installVoiceProviders({ verifier: { studentStatus: "unknown" } });
 
-  try {
-    await runVerifierAgent({ frame: leaky, kind: "final_answer", question: "How many are left?", studentText: "um" }, env);
+  await runVerifierAgent(
+    { frame: leaky, kind: "final_answer", question: "How many are left?", studentText: "um" },
+    env(fake)
+  );
 
-    assert.doesNotMatch(sentBody, /answer is\s*70/i, "worked answer phrasing must be scrubbed");
-    assert.doesNotMatch(sentBody, /=\s*70/, "trailing computed answer must be scrubbed");
-
-    const body = JSON.parse(sentBody) as { input: Array<{ content: Array<{ text: string }> }> };
-    const userText = body.input[0]!.content[0]!.text;
-    assert.doesNotMatch(userText, /"unknownTarget":\s*"70"/, "a numeric-only target is the answer in disguise");
-    assert.match(userText, /"raw":\s*"150"/, "givens are preserved");
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  const input = fake.calls.workflowInputs("verifier")[0] ?? "";
+  assert.doesNotMatch(input, /answer is\s*70/i, "worked answer phrasing must be scrubbed");
+  assert.doesNotMatch(input, /=\s*70/, "trailing computed answer must be scrubbed");
+  assert.doesNotMatch(input, /"unknownTarget":\s*"70"/, "a numeric-only target is the answer in disguise");
+  assert.match(input, /"raw":\s*"150"/, "givens are preserved");
 });
 
 test("runVerifierAgent rejects an out-of-enum verdict", async () => {
-  const originalFetch = globalThis.fetch;
-
-  globalThis.fetch = (async (): Promise<Response> =>
-    Response.json({
-      output_text: JSON.stringify({
+  // The harness's verifier slot returns whatever studentStatus it's configured with; to
+  // simulate the model returning an out-of-enum value, a raw binding fake is used so the
+  // response carries `studentStatus: "maybe"` which parseVerifierVerdict rejects.
+  const fetchImpl = (async (input: RequestInfo | URL): Promise<Response> => {
+    const url = String(input);
+    if (url.includes("/workflows/verifier")) {
+      return Response.json({
         confidence: "high",
         correctionHint: null,
         misconceptionKey: null,
         studentStatus: "maybe"
-      })
-    })) as typeof fetch;
+      });
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  }) as Fetcher["fetch"];
 
-  try {
-    await assert.rejects(
-      runVerifierAgent({ frame, kind: "step", question: "x", studentText: "y" }, env),
-      /verifier/i
-    );
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  await assert.rejects(
+    runVerifierAgent(
+      { frame, kind: "step", question: "x", studentText: "y" },
+      { OPENAI_TUTOR_MODEL: undefined, OPENAI_VERIFIER_MODEL: undefined, REASONING: { fetch: fetchImpl } as Fetcher }
+    ),
+    /verifier/i
+  );
 });

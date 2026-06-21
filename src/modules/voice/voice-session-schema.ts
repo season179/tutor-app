@@ -2,10 +2,8 @@ import { z } from "zod";
 
 import { comprehensionGateStatuses, sessionPhases } from "../tutoring/tutor-action.js";
 import type {
-  LiveKitAgentsSessionDescriptor,
   LessonControllerTurn,
   OpenAIVoicePipelineSessionDescriptor,
-  OpenAIRealtimeSessionDescriptor,
   PublicLessonTurn,
   TutorPolicy,
   VoiceCapabilities,
@@ -39,13 +37,6 @@ const baseVoiceSessionDescriptorSchema = z.object({
   tutorPolicy: tutorPolicySchema
 });
 
-const openAIRealtimeSessionDescriptorSchema = baseVoiceSessionDescriptorSchema.extend({
-  clientSecret: z.string().min(1),
-  model: z.string().min(1),
-  provider: z.literal("openai-realtime"),
-  voice: z.string().min(1)
-}) satisfies z.ZodType<OpenAIRealtimeSessionDescriptor>;
-
 const openAIVoicePipelineSessionDescriptorSchema = baseVoiceSessionDescriptorSchema.extend({
   model: z.string().min(1),
   provider: z.literal("openai-voice-pipeline"),
@@ -54,20 +45,10 @@ const openAIVoicePipelineSessionDescriptorSchema = baseVoiceSessionDescriptorSch
   voice: z.string().min(1)
 }) satisfies z.ZodType<OpenAIVoicePipelineSessionDescriptor>;
 
-const liveKitAgentsSessionDescriptorSchema = baseVoiceSessionDescriptorSchema.extend({
-  agentName: z.string().min(1),
-  livekitUrl: z.string().min(1),
-  participantIdentity: z.string().min(1),
-  participantToken: z.string().min(1),
-  provider: z.literal("livekit-agents"),
-  roomName: z.string().min(1)
-}) satisfies z.ZodType<LiveKitAgentsSessionDescriptor>;
-
-export const voiceSessionDescriptorSchema = z.discriminatedUnion("provider", [
-  openAIVoicePipelineSessionDescriptorSchema,
-  openAIRealtimeSessionDescriptorSchema,
-  liveKitAgentsSessionDescriptorSchema
-]);
+// The single backend now: the discriminated union collapsed to one arm when the
+// realtime and LiveKit descriptors were removed. Kept as a named schema (not inlined
+// into a union) so a future second backend re-introduces `z.discriminatedUnion` here.
+export const voiceSessionDescriptorSchema = openAIVoicePipelineSessionDescriptorSchema;
 
 const voicePreparedImageSchema = z.object({
   dataUrl: z.string().min(1),
@@ -145,12 +126,6 @@ export function parseVoiceSessionDescriptor(value: unknown): VoiceSessionDescrip
 
 export function serializeVoiceSessionDescriptor(descriptor: VoiceSessionDescriptor): VoiceSessionDescriptor {
   return voiceSessionDescriptorSchema.parse(descriptor);
-}
-
-export function serializeOpenAIRealtimeSessionDescriptor(
-  descriptor: OpenAIRealtimeSessionDescriptor
-): OpenAIRealtimeSessionDescriptor {
-  return openAIRealtimeSessionDescriptorSchema.parse(descriptor);
 }
 
 export function serializeOpenAIVoicePipelineSessionDescriptor(

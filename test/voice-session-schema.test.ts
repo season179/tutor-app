@@ -9,7 +9,6 @@ import {
 } from "../src/modules/voice/voice-session-schema.ts";
 import type {
   OpenAIVoicePipelineSessionDescriptor,
-  OpenAIRealtimeSessionDescriptor,
   VoicePipelineTurnResponse
 } from "../src/modules/voice/voice-types.ts";
 
@@ -19,22 +18,6 @@ const tutorPolicy = {
   greetingInstructions: "Greet the student warmly.",
   imageResponseInstructions: "Help the student with the problem in the image.",
   instructions: "You are a helpful tutor."
-};
-
-const openAISession: OpenAIRealtimeSessionDescriptor = {
-  capabilities: {
-    audioInput: true,
-    audioOutput: true,
-    imageInput: true,
-    manualReply: true,
-    payloadLimitBytes: null
-  },
-  clientSecret: "ek_test_secret",
-  model: "gpt-realtime-2",
-  provider: "openai-realtime",
-  sessionId: "session-123",
-  tutorPolicy,
-  voice: "marin"
 };
 
 const openAIPipelineSession: OpenAIVoicePipelineSessionDescriptor = {
@@ -54,14 +37,6 @@ const openAIPipelineSession: OpenAIVoicePipelineSessionDescriptor = {
   voice: "marin"
 };
 
-test("parseVoiceSessionDescriptor accepts a valid OpenAI session", () => {
-  assert.deepEqual(parseVoiceSessionDescriptor(openAISession), openAISession);
-});
-
-test("serializeVoiceSessionDescriptor round-trips a valid OpenAI session", () => {
-  assert.deepEqual(serializeVoiceSessionDescriptor(openAISession), openAISession);
-});
-
 test("parseVoiceSessionDescriptor accepts a valid OpenAI voice pipeline session", () => {
   assert.deepEqual(parseVoiceSessionDescriptor(openAIPipelineSession), openAIPipelineSession);
 });
@@ -79,27 +54,11 @@ test("parseVoiceSessionDescriptor rejects unsupported provider shapes", () => {
   assert.throws(
     () =>
       parseVoiceSessionDescriptor({
-        ...openAISession,
-        clientSecret: ""
+        ...openAIPipelineSession,
+        provider: "openai-realtime" as unknown as "openai-voice-pipeline"
       }),
     /supported provider shape/
   );
-});
-
-test("parseVoiceSessionDescriptor accepts a valid LiveKit session", () => {
-  const liveKitSession = {
-    agentName: "tutor-agent",
-    capabilities: openAISession.capabilities,
-    livekitUrl: "wss://example.livekit.cloud",
-    participantIdentity: "student-1",
-    participantToken: "token-abc",
-    provider: "livekit-agents" as const,
-    roomName: "tutor-room",
-    sessionId: "session-livekit",
-    tutorPolicy
-  };
-
-  assert.deepEqual(parseVoiceSessionDescriptor(liveKitSession), liveKitSession);
 });
 
 test("parseVoicePipelineTurnRequest accepts a text and image turn", () => {

@@ -16,16 +16,12 @@
     }
   ],
   "vars": {
-    "VOICE_BACKEND": "openai-voice-pipeline",
     "OPENAI_TUTOR_MODEL": "gpt-5.5",
     "OPENAI_GATE_CHECKER_MODEL": "gpt-5.5",
     "OPENAI_VERIFIER_MODEL": "gpt-5.5",
     "OPENAI_TRANSCRIBE_MODEL": "gpt-4o-transcribe",
     "OPENAI_TTS_MODEL": "gpt-4o-mini-tts",
     "OPENAI_TTS_VOICE": "marin",
-    "OPENAI_REALTIME_MODEL": "gpt-realtime-2",
-    "OPENAI_REALTIME_VOICE": "marin",
-    "OPENAI_SAFETY_IDENTIFIER": "cloudflare-ai-tutor-user",
     "OPENAI_VISION_MODEL": "gpt-5.5",
     "R2_BUCKET_NAME": "ai-tutor-problem-images",
     "BETTER_AUTH_URL": "https://ai-tutor.dev"
@@ -42,6 +38,12 @@
     "bindings": [{ "name": "SESSION_RUNTIME", "class_name": "SessionRuntimeDO" }]
   },
   "migrations": [{ "tag": "v1-session-runtime", "new_classes": ["SessionRuntimeDO"] }],
+  // Worker B (Flue) holds the reasoning stages. The service binding is visible inside
+  // SessionRuntimeDO via this.env, so per-turn reasoning calls (which run inside the DO)
+  // can reach it. Local dev needs both workers running — see AGENTS.md "Two-worker dev".
+  "services": [
+    { "binding": "REASONING", "service": "ai-tutor-reasoning" }
+  ],
   "secrets": {
     "required": [
       "OPENAI_API_KEY",
@@ -55,7 +57,7 @@
   },
   "ratelimits": [
     {
-      "name": "REALTIME_TOKEN_RATE_LIMITER",
+      "name": "VOICE_RATE_LIMITER",
       "namespace_id": "2026061401",
       "simple": {
         "limit": 10,

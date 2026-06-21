@@ -4,7 +4,12 @@ export const maxVoiceTurnBodyBytes = 8_000_000;
 
 export const defaultImagePrompt = "Help me understand this problem step by step.";
 
-export type VoiceBackend = "openai-voice-pipeline" | "openai-realtime" | "livekit-agents";
+// The voice backend is single-valued: the turn-based OpenAI pipeline is the only
+// backend, kept as a literal (not a union) so a dead config switch can't rot in
+// place. The realtime/WebRTC and LiveKit arms were removed in the Flue migration
+// plan's Phase 1; if a second backend returns, re-introduce a union here.
+export const voiceBackend = "openai-voice-pipeline" as const;
+export type VoiceBackend = typeof voiceBackend;
 
 export type VoiceSessionIntent = "tutor";
 
@@ -36,13 +41,6 @@ type BaseVoiceSessionDescriptor = {
   tutorPolicy: TutorPolicy;
 };
 
-export type OpenAIRealtimeSessionDescriptor = BaseVoiceSessionDescriptor & {
-  clientSecret: string;
-  model: string;
-  provider: "openai-realtime";
-  voice: string;
-};
-
 export type OpenAIVoicePipelineSessionDescriptor = BaseVoiceSessionDescriptor & {
   model: string;
   provider: "openai-voice-pipeline";
@@ -51,19 +49,7 @@ export type OpenAIVoicePipelineSessionDescriptor = BaseVoiceSessionDescriptor & 
   voice: string;
 };
 
-export type LiveKitAgentsSessionDescriptor = BaseVoiceSessionDescriptor & {
-  agentName: string;
-  livekitUrl: string;
-  participantIdentity: string;
-  participantToken: string;
-  provider: "livekit-agents";
-  roomName: string;
-};
-
-export type VoiceSessionDescriptor =
-  | OpenAIVoicePipelineSessionDescriptor
-  | OpenAIRealtimeSessionDescriptor
-  | LiveKitAgentsSessionDescriptor;
+export type VoiceSessionDescriptor = OpenAIVoicePipelineSessionDescriptor;
 
 export type VoicePreparedImage = {
   dataUrl: string;

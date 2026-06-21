@@ -37,7 +37,7 @@ test("MemorySessionStore appends events and updates session timestamps", async (
 
   await store.appendEvent(ownerKey, session.id, {
     message: "Voice session connected",
-    value: { provider: "openai-realtime" }
+    value: { provider: "openai-voice-pipeline" }
   });
 
   const detail = await store.getSession(ownerKey, session.id);

@@ -1,0 +1,7 @@
+# Build artifacts (Flue + wrangler). The deployable output is dist/ai_tutor_reasoning/.
+dist/
+.flue-vite/
+.flue-vite.*.jsonc
+.wrangler/
+node_modules/
+.dev.vars

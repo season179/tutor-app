@@ -26,8 +26,6 @@ import {
 // takes the shared 16 KB write cap (writeServerFnMiddleware) the old /api/voice/session
 // path enforced; the turn fn opts out of that cap and enforces its own 8 MB ceiling in
 // the handler (assertVoiceTurnWithinLimit), since audio turns are legitimately large.
-// The realtime/WebRTC adapter is a direct browser↔OpenAI path and intentionally stays
-// out of this file.
 
 /** Derive the per-caller rate-limit key from the request, mirroring the old Worker entry. */
 function readCallerKey(request: Request): string {
@@ -49,7 +47,7 @@ function toIpCallerKey(value: string | null | undefined): string | undefined {
  * same message the old JSON response carried.
  */
 async function enforceVoiceRateLimit(): Promise<void> {
-  const limiter = workerEnv().REALTIME_TOKEN_RATE_LIMITER;
+  const limiter = workerEnv().VOICE_RATE_LIMITER;
   if (!limiter) {
     return;
   }

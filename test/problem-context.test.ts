@@ -21,14 +21,19 @@ const context: RequestContext = {
   ownerKey
 };
 
-const r2Env = {
-  OPENAI_API_KEY: "test-key",
+// Extraction now crosses the REASONING binding; each test installs a binding fake and
+// threads it onto r2Env via withBinding(). R2 credentials stay for presigning.
+const r2BaseEnv = {
   OPENAI_VISION_MODEL: "gpt-5.5",
   R2_ACCESS_KEY_ID: "test-access-key",
   R2_ACCOUNT_ID: "test-account",
   R2_BUCKET_NAME: "ai-tutor-problem-images",
   R2_SECRET_ACCESS_KEY: "test-secret-key"
 };
+
+function withBinding(reasoning: Fetcher) {
+  return { ...r2BaseEnv, REASONING: reasoning };
+}
 
 const fullExtractionPayload = {
   confidence: "high" as const,
@@ -72,7 +77,7 @@ test("handleUploadUrlRequest returns a scoped object key for owned sessions", as
       contentType: "image/jpeg",
       sessionId: session.id
     },
-    r2Env,
+    r2BaseEnv,
     store,
     context
   );
@@ -94,7 +99,7 @@ test("handleExtractQuestionRequest rejects object keys from another session", as
           objectKey: foreignKey,
           sessionId: session.id
         },
-        r2Env,
+        r2BaseEnv,
         store,
         context
       ),
@@ -105,30 +110,30 @@ test("handleExtractQuestionRequest rejects object keys from another session", as
   );
 });
 
-test("handleExtractQuestionRequest sends an R2 URL to OpenAI and parses the question", async () => {
+test("handleExtractQuestionRequest sends the R2 URL over the binding and parses the question", async () => {
   const store = new MemorySessionStore();
   const session = await store.createSession(ownerKey, { title: "Algebra" });
   const objectKey = createProblemImageObjectKey(session.id);
 
+  // R2 HEAD (existence) still goes through globalThis.fetch; the extraction crosses the binding.
   const originalFetch = globalThis.fetch;
-  let openAiBody: Record<string, unknown> | undefined;
-
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  globalThis.fetch = (async (input: RequestInfo | URL): Promise<Response> => {
     const url = input instanceof Request ? input.url : String(input);
-
     if (url.includes("r2.cloudflarestorage.com")) {
       return new Response(null, { status: 200 });
     }
-
-    if (url === "https://api.openai.com/v1/responses") {
-      openAiBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
-      return Response.json({
-        output_text: JSON.stringify(fullExtractionPayload)
-      });
-    }
-
     throw new Error(`Unexpected fetch: ${url}`);
   }) as typeof fetch;
+
+  let workflowPayload: { imageUrl?: string; input?: string } | undefined;
+  const bindingFetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = String(input);
+    if (url.includes("/workflows/extract-question")) {
+      workflowPayload = JSON.parse(String(init?.body)) as typeof workflowPayload;
+      return Response.json(fullExtractionPayload);
+    }
+    throw new Error(`unexpected REASONING fetch: ${url}`);
+  }) as Fetcher["fetch"];
 
   try {
     const response = await handleExtractQuestionRequest(
@@ -136,7 +141,7 @@ test("handleExtractQuestionRequest sends an R2 URL to OpenAI and parses the ques
         objectKey,
         sessionId: session.id
       },
-      r2Env,
+      withBinding({ fetch: bindingFetch } as Fetcher),
       store,
       context
     );
@@ -146,10 +151,9 @@ test("handleExtractQuestionRequest sends an R2 URL to OpenAI and parses the ques
     assert.equal(response.outcome, "extracted");
     assert.equal(response.requiresConfirmation, true);
 
-    const input = openAiBody?.input as Array<{ content: Array<Record<string, string>> }>;
-    const imagePart = input[0]?.content.find((part) => part.type === "input_image");
-    assert.ok(imagePart?.image_url?.includes("r2.cloudflarestorage.com"));
-    assert.equal(imagePart.image_url.startsWith("data:"), false);
+    // The R2 read URL rides the workflow payload's imageUrl field (Worker B fetches the bytes).
+    assert.ok(workflowPayload?.imageUrl?.includes("r2.cloudflarestorage.com"));
+    assert.equal(workflowPayload!.imageUrl!.startsWith("data:"), false);
 
     const updated = await store.getSession(ownerKey, session.id);
     assert.equal(updated?.session.imageObjectKey, objectKey);
@@ -177,39 +181,32 @@ test("handleExtractQuestionRequest sends an R2 URL to OpenAI and parses the ques
 });
 
 test("extractQuestionFromImageUrl handles low-confidence empty questions", async () => {
-  const originalFetch = globalThis.fetch;
-
-  globalThis.fetch = (async (input: RequestInfo | URL): Promise<Response> => {
+  const bindingFetch = (async (input: RequestInfo | URL): Promise<Response> => {
     const url = String(input);
-
-    if (url === "https://api.openai.com/v1/responses") {
+    if (url.includes("/workflows/extract-question")) {
       return Response.json({
-        output_text: JSON.stringify({
-          ...fullExtractionPayload,
-          confidence: "low",
-          extractedText: "",
-          notes: "No readable question was visible.",
-          outcome: "none",
-          question: "",
-          unknownTarget: null
-        })
+        ...fullExtractionPayload,
+        confidence: "low",
+        extractedText: "",
+        notes: "No readable question was visible.",
+        outcome: "none",
+        question: "",
+        unknownTarget: null
       });
     }
+    throw new Error(`unexpected REASONING fetch: ${url}`);
+  }) as Fetcher["fetch"];
 
-    throw new Error(`Unexpected fetch: ${url}`);
-  }) as typeof fetch;
+  const response = await extractQuestionFromImageUrl(
+    "https://example.com/problem.jpg",
+    withBinding({ fetch: bindingFetch } as Fetcher)
+  );
 
-  try {
-    const response = await extractQuestionFromImageUrl("https://example.com/problem.jpg", r2Env);
-
-    assert.equal(response.confidence, "low");
-    assert.equal(response.question, "");
-    assert.equal(response.outcome, "none");
-    assert.equal(response.notes, "No readable question was visible.");
-    assert.equal(response.requiresConfirmation, true);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  assert.equal(response.confidence, "low");
+  assert.equal(response.question, "");
+  assert.equal(response.outcome, "none");
+  assert.equal(response.notes, "No readable question was visible.");
+  assert.equal(response.requiresConfirmation, true);
 });
 
 test("normalizeExtractionResponse never returns extracted for empty questions", () => {
@@ -229,30 +226,31 @@ test("handleExtractQuestionRequest persists partial extraction metadata", async 
   const objectKey = createProblemImageObjectKey(session.id);
   const originalFetch = globalThis.fetch;
 
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  // R2 HEAD via fetch; extraction via the binding.
+  globalThis.fetch = (async (input: RequestInfo | URL): Promise<Response> => {
     const url = input instanceof Request ? input.url : String(input);
-
     if (url.includes("r2.cloudflarestorage.com")) {
       return new Response(null, { status: 200 });
     }
-
-    if (url === "https://api.openai.com/v1/responses") {
-      return Response.json({
-        output_text: JSON.stringify({
-          ...fullExtractionPayload,
-          confidence: "medium",
-          extractedText: "Find the area of the triangle.",
-          notes: "Bottom of the page was cut off.",
-          outcome: "partial",
-          problemType: "geometry",
-          question: "Find the area of the triangle.",
-          unknownTarget: "the area of the triangle"
-        })
-      });
-    }
-
     throw new Error(`Unexpected fetch: ${url}`);
   }) as typeof fetch;
+
+  const bindingFetch = (async (input: RequestInfo | URL): Promise<Response> => {
+    const url = String(input);
+    if (url.includes("/workflows/extract-question")) {
+      return Response.json({
+        ...fullExtractionPayload,
+        confidence: "medium",
+        extractedText: "Find the area of the triangle.",
+        notes: "Bottom of the page was cut off.",
+        outcome: "partial",
+        problemType: "geometry",
+        question: "Find the area of the triangle.",
+        unknownTarget: "the area of the triangle"
+      });
+    }
+    throw new Error(`unexpected REASONING fetch: ${url}`);
+  }) as Fetcher["fetch"];
 
   try {
     const response = await handleExtractQuestionRequest(
@@ -260,7 +258,7 @@ test("handleExtractQuestionRequest persists partial extraction metadata", async 
         objectKey,
         sessionId: session.id
       },
-      r2Env,
+      withBinding({ fetch: bindingFetch } as Fetcher),
       store,
       context
     );

@@ -7,5 +7,5 @@
     "types": ["@cloudflare/workers-types"],
     "noEmit": true
   },
-  "include": ["src/modules/auth/realtime-token.ts", "src/worker.ts", "worker-configuration.d.ts"]
+  "include": ["src/worker.ts", "worker-configuration.d.ts"]
 }

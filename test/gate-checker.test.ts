@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 
 import { checkGateRestatement, checkGateStage } from "../src/modules/tutoring/gate-checker.ts";
-
-const env = {
-  OPENAI_API_KEY: "test-key",
-  OPENAI_GATE_CHECKER_MODEL: undefined,
-  OPENAI_TUTOR_MODEL: undefined
-};
+import { installVoiceProviders, type VoiceProviderFake } from "./helpers/fake-voice-providers.ts";
 
 const frame = {
   diagramDescription: null,
@@ -24,34 +19,18 @@ const frame = {
   visibleQuestion: "How many stickers does each friend get?"
 };
 
-type GateCall = { instructions: string; read: string };
-
-function captureGateCall(accepted: boolean): {
-  fetch: typeof fetch;
-  calls: GateCall[];
-} {
-  const calls: GateCall[] = [];
-  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = String(input);
-    if (url !== "https://api.openai.com/v1/responses") {
-      throw new Error(`Unexpected fetch: ${url}`);
-    }
-
-    const body = JSON.parse(String(init?.body)) as {
-      instructions: string;
-      input: Array<{ content: Array<{ text: string }> }>;
-    };
-    const payload = JSON.parse(body.input[0]!.content[0]!.text) as { read: string };
-    calls.push({ instructions: body.instructions, read: payload.read });
-
-    return Response.json({ output_text: JSON.stringify({ accepted, notes: null }) });
-  }) as typeof fetch;
-
-  return { calls, fetch: fetchImpl };
+// checkGateStage reaches the model through the REASONING binding; each test installs a fake
+// carrying the gateChecker slot. The env reads the binding off the installed fake.
+let fake: VoiceProviderFake | null = null;
+function env() {
+  return { OPENAI_GATE_CHECKER_MODEL: undefined, OPENAI_TUTOR_MODEL: undefined, REASONING: fake?.reasoning };
 }
+afterEach(() => {
+  fake?.restore();
+  fake = null;
+});
 
 test("checkGateStage sends a stage-specific rubric and the stage name as the read", async () => {
-  const originalFetch = globalThis.fetch;
   const stages = ["context", "quantity", "target", "restatement"] as const;
   const markers: Record<(typeof stages)[number], RegExp> = {
     context: /READ 1 \(context\)/,
@@ -60,48 +39,37 @@ test("checkGateStage sends a stage-specific rubric and the stage name as the rea
     restatement: /FULL restatement/
   };
 
-  try {
-    for (const stage of stages) {
-      const { calls, fetch: fetchImpl } = captureGateCall(true);
-      globalThis.fetch = fetchImpl;
+  for (const stage of stages) {
+    fake = installVoiceProviders({ gateChecker: { accepted: true, notes: null } });
 
-      const verdict = await checkGateStage(stage, frame, "my words about it", env);
+    const verdict = await checkGateStage(stage, frame, "my words about it", env());
 
-      assert.equal(verdict.accepted, true);
-      assert.equal(calls.length, 1);
-      assert.equal(calls[0]?.read, stage);
-      assert.match(calls[0]!.instructions, /comprehension-gate checker/);
-      assert.match(calls[0]!.instructions, markers[stage]);
-    }
-  } finally {
-    globalThis.fetch = originalFetch;
+    assert.equal(verdict.accepted, true);
+    assert.equal(fake.calls.counts.gateChecker, 1);
+
+    // The rubric + the comprehension-gate marker travel in the workflow input, and the
+    // stage name is encoded as the `read` field in the JSON payload.
+    const input = fake.calls.workflowInputs("gateChecker")[0] ?? "";
+    assert.match(input, /comprehension-gate checker/);
+    assert.match(input, markers[stage]);
+    assert.match(input, new RegExp(`"read"\\s*:\\s*"${stage}"`));
   }
 });
 
 test("checkGateStage short-circuits empty student text without calling the model", async () => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = (async () => {
-    throw new Error("must not call the model for empty text");
-  }) as typeof fetch;
+  fake = installVoiceProviders({ gateChecker: { accepted: true, notes: null } });
 
-  try {
-    const verdict = await checkGateStage("context", frame, "   ", env);
-    assert.equal(verdict.accepted, false);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  const verdict = await checkGateStage("context", frame, "   ", env());
+
+  assert.equal(verdict.accepted, false);
+  assert.equal(fake.calls.counts.gateChecker, 0);
 });
 
 test("checkGateRestatement is the restatement-stage check", async () => {
-  const originalFetch = globalThis.fetch;
-  const { calls, fetch: fetchImpl } = captureGateCall(true);
-  globalThis.fetch = fetchImpl;
+  fake = installVoiceProviders({ gateChecker: { accepted: true, notes: null } });
 
-  try {
-    await checkGateRestatement(frame, "We need to find how many each friend gets.", env);
-    assert.equal(calls[0]?.read, "restatement");
-    assert.match(calls[0]!.instructions, /FULL restatement/);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  await checkGateRestatement(frame, "We need to find how many each friend gets.", env());
+
+  assert.equal(fake.calls.counts.gateChecker, 1);
+  assert.match(fake.calls.workflowInputs("gateChecker")[0] ?? "", /FULL restatement/);
 });

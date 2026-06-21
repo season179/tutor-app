@@ -10,8 +10,8 @@ function expectedTime(): string {
 
 test("formatEventEntry renders JSON payloads", () => {
   assert.equal(
-    formatEventEntry(createdAt, "Voice session connected", { provider: "openai-realtime" }),
-    `[${expectedTime()}] Voice session connected ${JSON.stringify({ provider: "openai-realtime" }, null, 2)}`
+    formatEventEntry(createdAt, "Voice session connected", { provider: "openai-voice-pipeline" }),
+    `[${expectedTime()}] Voice session connected ${JSON.stringify({ provider: "openai-voice-pipeline" }, null, 2)}`
   );
 });
 

@@ -13,7 +13,6 @@ export type AppStatus = {
 export type TutorSessionState = {
   adapter: VoiceClientAdapter;
   descriptor: VoiceSessionDescriptor;
-  mediaStream?: MediaStream | undefined;
   unsubscribe: () => void;
 };
 

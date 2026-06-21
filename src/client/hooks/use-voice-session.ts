@@ -26,28 +26,12 @@ type UseVoiceSessionOptions = {
 };
 
 function describeVoiceSession(descriptor: VoiceSessionDescriptor): Record<string, string> {
-  if (descriptor.provider === "openai-voice-pipeline") {
-    return {
-      model: descriptor.model,
-      provider: descriptor.provider,
-      transcribeModel: descriptor.transcribeModel,
-      ttsModel: descriptor.ttsModel,
-      voice: descriptor.voice
-    };
-  }
-
-  if (descriptor.provider === "openai-realtime") {
-    return {
-      model: descriptor.model,
-      provider: descriptor.provider,
-      voice: descriptor.voice
-    };
-  }
-
   return {
-    agentName: descriptor.agentName,
+    model: descriptor.model,
     provider: descriptor.provider,
-    roomName: descriptor.roomName
+    transcribeModel: descriptor.transcribeModel,
+    ttsModel: descriptor.ttsModel,
+    voice: descriptor.voice
   };
 }
 
@@ -88,9 +72,9 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
     setStatus(readyStatusMessage);
   }, [setStatus]);
 
-  const cleanupSessionResources = useCallback((activeSession: TutorSessionState) => {
-    activeSession.mediaStream?.getTracks().forEach((track) => track.stop());
-
+  // Clear the audio sink. The adapter's own stream teardown happens in
+  // `adapter.disconnect()` (the pipeline adapter owns its mic stream internally now).
+  const cleanupSessionResources = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.srcObject = null;
     }
@@ -104,7 +88,7 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
 
       activeSession.unsubscribe();
       activeSession.adapter.disconnect();
-      cleanupSessionResources(activeSession);
+      cleanupSessionResources();
     },
     [cleanupSessionResources]
   );
@@ -127,7 +111,8 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
 
   const clearDisconnectedSession = useCallback(
     (activeSession: TutorSessionState) => {
-      cleanupSessionResources(activeSession);
+      void activeSession;
+      cleanupSessionResources();
       sessionRef.current = undefined;
       setIsRunning(false);
       setIsRecording(false);
@@ -230,26 +215,17 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
         const descriptor = await requestVoiceSessionDescriptor(activeSessionId);
         assertNotCancelled();
 
-        let mediaStream: MediaStream | undefined;
-        if (descriptor.provider === "openai-realtime") {
-          setStatus("Requesting microphone access...", "working");
-          mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        }
-        assertNotCancelled();
-
         if (!audioRef.current) {
           throw new Error("Audio element is not ready.");
         }
 
-        const adapter = createVoiceClientAdapter(descriptor.provider, {
-          audioElement: audioRef.current,
-          mediaStream
+        const adapter = createVoiceClientAdapter({
+          audioElement: audioRef.current
         });
 
         const nextSession: TutorSessionState = {
           adapter,
           descriptor,
-          ...(mediaStream ? { mediaStream } : {}),
           unsubscribe: () => undefined
         };
         pendingSession = nextSession;
@@ -263,13 +239,10 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
         logEvent("Voice session connected", describeVoiceSession(descriptor));
 
         if (greetOnOpen) {
-          // The tutor opens the session. Realtime nudges the live agent to greet; the
-          // turn-based pipeline sends a kickoff turn so the server speaks the first move.
-          if (descriptor.provider === "openai-realtime") {
-            adapter.requestReply(descriptor.tutorPolicy.greetingInstructions);
-          } else if (descriptor.provider === "openai-voice-pipeline") {
-            adapter.requestOpeningTurn();
-          }
+          // The tutor opens the session: the turn-based pipeline sends a kickoff turn
+          // so the server speaks the first move. Mic access is acquired lazily on the
+          // first manual audio turn, not at connect time.
+          adapter.requestOpeningTurn();
         }
 
         return nextSession;
@@ -378,8 +351,8 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
   }, [logEvent, setStatus]);
 
   // Typed turns share the audio path: connect on demand (without a greeting, since
-  // the child's message is the opening turn), send the text, and let the backend
-  // reply. The pipeline answers a sent turn directly; realtime needs a nudge.
+  // the child's message is the opening turn), send the text, and the pipeline
+  // answers the turn directly.
   const sendTextTurn = useCallback(
     async (text: string): Promise<void> => {
       const trimmed = text.trim();
@@ -400,10 +373,6 @@ export function useVoiceSession({ audioRef, logEvent, sessionId }: UseVoiceSessi
             : await startSession({ greet: false });
 
         activeSession.adapter.sendUserTurn({ image: null, text: trimmed });
-
-        if (activeSession.descriptor.provider === "openai-realtime") {
-          activeSession.adapter.requestReply();
-        }
 
         logEvent("Student text turn", trimmed);
       } catch (error) {

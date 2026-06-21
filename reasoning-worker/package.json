@@ -1,0 +1,22 @@
+{
+  "name": "ai-tutor-reasoning",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Worker B (Flue): the pure model executor for the ai-tutor reasoning stages. Built with `npx flue build --target cloudflare` and deployed from dist/ai_tutor_reasoning/wrangler.json. See docs/adr/0001-flue-reasoning-worker.md.",
+  "scripts": {
+    "build": "flue build --target cloudflare",
+    "dev": "flue dev --target cloudflare",
+    "deploy": "flue build --target cloudflare && wrangler deploy --config dist/ai_tutor_reasoning/wrangler.json",
+    "deploy:dry-run": "flue build --target cloudflare && wrangler deploy --config dist/ai_tutor_reasoning/wrangler.json --dry-run"
+  },
+  "dependencies": {
+    "@flue/runtime": "^1.0.0-beta.1",
+    "agents": "^0.1.0",
+    "valibot": "^1.0.0"
+  },
+  "devDependencies": {
+    "@flue/cli": "^1.0.0-beta.1",
+    "wrangler": "^4.102.0"
+  }
+}

@@ -24,15 +24,11 @@ GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
 # Voice / model defaults (optional — fall back to wrangler.jsonc vars)
-VOICE_BACKEND=openai-voice-pipeline
 OPENAI_TUTOR_MODEL=gpt-5.5
 OPENAI_VERIFIER_MODEL=gpt-5.5
 OPENAI_TRANSCRIBE_MODEL=gpt-4o-transcribe
 OPENAI_TTS_MODEL=gpt-4o-mini-tts
 OPENAI_TTS_VOICE=marin
-OPENAI_REALTIME_MODEL=gpt-realtime-2
-OPENAI_REALTIME_VOICE=marin
-OPENAI_SAFETY_IDENTIFIER=local-ai-tutor-user
 OPENAI_VISION_MODEL=gpt-5.5
 
 # R2 direct-upload credentials (Cloudflare dashboard → R2 → Manage API tokens)

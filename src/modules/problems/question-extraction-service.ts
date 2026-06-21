@@ -1,5 +1,5 @@
 import { HttpError, type JsonValue } from "../../core/http-error.js";
-import { extractOutputText, fetchOpenAiJson, requireOpenAiApiKey } from "../../providers/openai/openai-responses.js";
+import { runReasoningWorkflow, type ReasoningEnv } from "../../providers/reasoning/reasoning-binding.js";
 import { isJsonObject } from "../../core/schema-parser.js";
 import {
   defaultProblemFrame,
@@ -12,12 +12,11 @@ import {
 } from "./problem-frame.js";
 import type { ExtractionOutcome, ExtractQuestionResponse } from "./problem-context-types.js";
 
-export const defaultVisionModel = "gpt-5.5";
-
 const minExtractedQuestionLength = 12;
 
-export type QuestionExtractionServiceEnv = {
-  OPENAI_API_KEY: string | undefined;
+export type QuestionExtractionServiceEnv = ReasoningEnv & {
+  // The vision model specifier lives in Worker B's REASONING_MODEL. OPENAI_VISION_MODEL is
+  // retained for back-compat with callers that read it.
   OPENAI_VISION_MODEL: string | undefined;
 };
 
@@ -34,84 +33,6 @@ If text is visible but incomplete, garbled, or missing key parts, set outcome to
 If a complete question is visible, set outcome to extracted.
 Set confidence to high, medium, or low based on how certain you are.
 Use notes for brief explanations when outcome is not extracted.`;
-
-const quantitySchema = {
-  additionalProperties: false,
-  properties: {
-    label: { type: "string" },
-    raw: { type: "string" },
-    unit: { type: ["string", "null"] }
-  },
-  required: ["label", "raw", "unit"],
-  type: "object"
-} as const;
-
-const extractedQuestionJsonSchema = {
-  additionalProperties: false,
-  properties: {
-    confidence: {
-      enum: ["high", "low", "medium"],
-      type: "string"
-    },
-    diagramDescription: { type: ["string", "null"] },
-    extractedText: { type: "string" },
-    languageIsSubject: { type: "boolean" },
-    likelySkillKeys: {
-      items: { type: "string" },
-      type: "array"
-    },
-    notes: {
-      type: ["string", "null"]
-    },
-    outcome: {
-      enum: ["extracted", "multiple_questions", "none", "not_a_problem", "partial"],
-      type: "string"
-    },
-    problemType: {
-      enum: [...problemTypes],
-      type: "string"
-    },
-    quantities: {
-      items: quantitySchema,
-      type: "array"
-    },
-    question: {
-      type: "string"
-    },
-    relationships: {
-      items: { type: "string" },
-      type: "array"
-    },
-    taskLanguage: { type: "string" },
-    unknownTarget: { type: ["string", "null"] }
-  },
-  required: [
-    "question",
-    "confidence",
-    "notes",
-    "outcome",
-    "extractedText",
-    "problemType",
-    "likelySkillKeys",
-    "quantities",
-    "relationships",
-    "unknownTarget",
-    "diagramDescription",
-    "taskLanguage",
-    "languageIsSubject"
-  ],
-  type: "object"
-} as const;
-
-export function createQuestionExtractionOptions(env: QuestionExtractionServiceEnv): {
-  apiKey: string | undefined;
-  visionModel: string;
-} {
-  return {
-    apiKey: env.OPENAI_API_KEY,
-    visionModel: env.OPENAI_VISION_MODEL ?? defaultVisionModel
-  };
-}
 
 type RawExtractionPayload = {
   confidence: ExtractQuestionResponse["confidence"];
@@ -195,55 +116,23 @@ export async function extractQuestionFromImageUrl(
   imageUrl: string,
   env: QuestionExtractionServiceEnv
 ): Promise<ExtractQuestionResponse> {
-  const options = createQuestionExtractionOptions(env);
-  const apiKey = requireOpenAiApiKey(options.apiKey);
-
-  const payload = await fetchOpenAiJson("https://api.openai.com/v1/responses", {
-    apiKey,
-    body: JSON.stringify({
-      input: [
-        {
-          content: [
-            {
-              text: extractionInstructions,
-              type: "input_text"
-            },
-            {
-              image_url: imageUrl,
-              type: "input_image"
-            }
-          ],
-          role: "user"
-        }
-      ],
-      model: options.visionModel,
-      text: {
-        format: {
-          name: "extracted_question",
-          schema: extractedQuestionJsonSchema,
-          strict: true,
-          type: "json_schema"
-        }
-      }
-    }),
-    headers: {
-      "Content-Type": "application/json"
-    },
-    method: "POST"
-  });
-
-  const outputText = extractOutputText(payload);
-
-  if (!outputText) {
-    throw new HttpError(502, "OpenAI vision response did not include output text.", payload);
-  }
+  // The extraction instructions cross as the workflow `input`, the presigned image URL as
+  // `imageUrl` (Worker B fetches the bytes and attaches them as a vision image). A binding
+  // failure propagates as HttpError(502) — extraction is NOT fail-soft (it runs at session
+  // creation, outside the turn loop).
+  const result = await runReasoningWorkflow(
+    "extract-question",
+    extractionInstructions,
+    env,
+    { imageUrl }
+  );
 
   try {
-    return normalizeExtractionResponse(parseExtractQuestionResponse(JSON.parse(outputText) as JsonValue));
+    return normalizeExtractionResponse(parseExtractQuestionResponse(result));
   } catch (error) {
     throw new HttpError(
       502,
-      "OpenAI vision response was not valid extraction JSON.",
+      "Extraction binding result did not match the extraction shape.",
       error instanceof Error ? error.message : String(error)
     );
   }

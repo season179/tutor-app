@@ -44,8 +44,8 @@ export function UnifiedComposer({
   // so the composer stays inert until extraction settles (and a session exists).
   const blocked = !sessionReady || (extractingQuestion && !isRunning);
   const canSend = !blocked && text.trim().length > 0;
-  // Realtime listens continuously, so there is no manual turn to start: the mic
-  // only acts before a session (start it) or for providers with manual turns.
+  // The mic starts a session (before one is live) or begins a manual audio turn
+  // once the turn-based pipeline session is connected.
   const micDisabled = blocked || (isRunning && !canRecordAudioTurn);
 
   const submit = () => {

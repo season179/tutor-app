@@ -1,5 +1,9 @@
 import { HttpError, type JsonValue } from "../../core/http-error.js";
-import { extractOutputText, fetchOpenAiJson, requireOpenAiApiKey } from "../../providers/openai/openai-responses.js";
+import {
+  composeReasoningInput,
+  runReasoningWorkflow,
+  type ReasoningEnv
+} from "../../providers/reasoning/reasoning-binding.js";
 import { isJsonObject } from "../../core/schema-parser.js";
 import {
   scrubComputedSolutionFromFrame,
@@ -7,8 +11,6 @@ import {
   type ProblemFrame
 } from "../problems/problem-frame.js";
 import type { StudentAssessmentStatus } from "./tutor-action.js";
-
-export const defaultVerifierModel = "gpt-5.5";
 
 /** Whether we are grading a single step in the loop or the final framed answer. */
 export type VerifierKind = "step" | "final_answer";
@@ -26,8 +28,9 @@ export type VerifierVerdict = {
   correctionHint: string | null;
 };
 
-export type VerifierAgentEnv = {
-  OPENAI_API_KEY: string | undefined;
+export type VerifierAgentEnv = ReasoningEnv & {
+  // The verifier model specifier lives in Worker B's REASONING_MODEL; these OpenAI model
+  // env vars are retained for back-compat with callers that read them.
   OPENAI_VERIFIER_MODEL?: string | undefined;
   OPENAI_TUTOR_MODEL: string | undefined;
 };
@@ -38,11 +41,6 @@ export type VerifierAgentInput = {
   question: string;
   studentText: string;
   kind: VerifierKind;
-};
-
-type VerifierOptions = {
-  apiKey: string | undefined;
-  model: string;
 };
 
 const verifierStatuses = ["correct", "partial", "incorrect", "stuck", "off_task", "unknown"] as const;
@@ -66,96 +64,58 @@ misconceptionKey: a short snake_case tag for the error (e.g. "used_total_not_sha
 
 Return JSON only.`;
 
-const verifierJsonSchema = {
-  additionalProperties: false,
-  properties: {
-    confidence: { enum: ["low", "medium", "high"], type: "string" },
-    correctionHint: { type: ["string", "null"] },
-    misconceptionKey: { type: ["string", "null"] },
-    studentStatus: { enum: [...verifierStatuses], type: "string" }
-  },
-  required: ["confidence", "correctionHint", "misconceptionKey", "studentStatus"],
-  type: "object"
-} as const;
-
-export function createVerifierOptions(env: VerifierAgentEnv): VerifierOptions {
-  return {
-    apiKey: env.OPENAI_API_KEY,
-    model: env.OPENAI_VERIFIER_MODEL ?? env.OPENAI_TUTOR_MODEL ?? defaultVerifierModel
-  };
+/**
+ * The scrubbed, role-neutral user content the workflow receives — the kind (step vs final
+ * answer), the scrubbed frame, the question being answered, and the student's words.
+ */
+function verifierUserContent(input: VerifierAgentInput, safeFrame: ProblemFrame): string {
+  return JSON.stringify(
+    {
+      kind: input.kind,
+      problemFrame: {
+        givens: safeFrame.quantities,
+        relationships: safeFrame.relationships,
+        unknownTarget: safeFrame.unknownTarget,
+        visibleQuestion: safeFrame.visibleQuestion
+      },
+      questionAsked: scrubComputedSolutionFromText(input.question),
+      studentText: input.studentText.trim()
+    },
+    null,
+    2
+  );
 }
 
 /**
  * Grades a step or final answer with a narrow LLM rubric. The frame is scrubbed of any
  * worked solution before it reaches the model (defense-in-depth on top of extraction).
+ *
+ * The model call crosses the REASONING binding (Worker B's verifier workflow). The
+ * verifier is the ONLY fail-soft stage: a binding failure here propagates as HttpError(502)
+ * straight into `gradeStudentTurn`'s existing try/catch, which degrades to an `unknown`
+ * verdict. No new error mapper wraps this call — double-mapping would risk silently turning
+ * a real failure into a wrong grade. See docs/adr/0001-flue-reasoning-worker.md.
  */
 export async function runVerifierAgent(
   input: VerifierAgentInput,
   env: VerifierAgentEnv
 ): Promise<VerifierVerdict> {
-  const options = createVerifierOptions(env);
-  const apiKey = requireOpenAiApiKey(options.apiKey);
   // Strip any worked solution (numeric-only target, "= 6", "the answer is 6") before the
   // frame reaches the model — defense-in-depth on top of the scrub done at extraction.
   const safeFrame = scrubComputedSolutionFromFrame(input.frame);
-
-  const payload = await fetchOpenAiJson("https://api.openai.com/v1/responses", {
-    apiKey,
-    body: JSON.stringify({
-      input: [
-        {
-          content: [
-            {
-              text: JSON.stringify(
-                {
-                  kind: input.kind,
-                  problemFrame: {
-                    givens: safeFrame.quantities,
-                    relationships: safeFrame.relationships,
-                    unknownTarget: safeFrame.unknownTarget,
-                    visibleQuestion: safeFrame.visibleQuestion
-                  },
-                  questionAsked: scrubComputedSolutionFromText(input.question),
-                  studentText: input.studentText.trim()
-                },
-                null,
-                2
-              ),
-              type: "input_text"
-            }
-          ],
-          role: "user"
-        }
-      ],
-      instructions: verifierInstructions,
-      model: options.model,
-      text: {
-        format: {
-          name: "verifier_verdict",
-          schema: verifierJsonSchema,
-          strict: true,
-          type: "json_schema"
-        }
-      }
-    }),
-    headers: {
-      "Content-Type": "application/json"
-    },
-    method: "POST"
-  });
-
-  const outputText = extractOutputText(payload);
-
-  if (!outputText) {
-    throw new HttpError(502, "OpenAI verifier response did not include output text.", payload);
-  }
+  const composedInput = composeReasoningInput(
+    verifierInstructions,
+    verifierUserContent(input, safeFrame)
+  );
+  const result = await runReasoningWorkflow("verifier", composedInput, env);
 
   try {
-    return parseVerifierVerdict(JSON.parse(outputText) as JsonValue);
+    return parseVerifierVerdict(result);
   } catch (error) {
+    // Propagates as HttpError(502) into gradeStudentTurn's fail-soft catch.
     throw new HttpError(
       502,
-      "OpenAI verifier response was not valid JSON.",
+      "Verifier binding result did not match the verdict shape.",
       error instanceof Error ? error.message : String(error)
     );
   }

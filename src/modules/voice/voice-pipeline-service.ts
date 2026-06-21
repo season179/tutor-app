@@ -1,4 +1,12 @@
 import { HttpError, type JsonValue } from "../../core/http-error.js";
+import {
+  extractOutputText,
+  fetchOpenAiJson,
+  openAiRequestTimeoutMs,
+  requireOpenAiApiKey
+} from "../../providers/openai/openai-responses.js";
+import type { ReasoningEnv } from "../../providers/reasoning/reasoning-binding.js";
+import { composeReasoningInput, runReasoningWorkflow } from "../../providers/reasoning/reasoning-binding.js";
 import { outputLanguageLabel } from "../tutoring/answer-checker.js";
 import { deriveFinalAnswerCheck, deriveFirstCheckableStep, type ActiveStep } from "../tutoring/active-step.js";
 import { checkGateStage, type GateCheckerVerdict } from "../tutoring/gate-checker.js";
@@ -60,15 +68,16 @@ export const defaultTranscribeModel = "gpt-4o-transcribe";
 export const defaultTtsModel = "gpt-4o-mini-tts";
 export const defaultTtsVoice = "marin";
 
-const maxOpenAiJsonResponseBytes = 256_000;
-const openAiRequestTimeoutMs = 30_000;
 const speechMimeType = "audio/mpeg";
+// Cap on the TTS upstream error body read for the HttpError payload (the success body is
+// binary and read in full via arrayBuffer). Mirrors the shared helper's response cap.
+const maxOpenAiSpeechErrorBytes = 8_192;
 // How many times the generator may be re-asked when its proposed turn fails the
 // phase rules before we give up. The gate must never be talked past, so a turn that
 // keeps proposing illegal moves fails rather than reaching TTS.
 const maxTutorAttempts = 2;
 
-export type VoicePipelineServiceEnv = {
+export type VoicePipelineServiceEnv = ReasoningEnv & {
   OPENAI_API_KEY: string | undefined;
   OPENAI_GATE_CHECKER_MODEL?: string | undefined;
   OPENAI_TRANSCRIBE_MODEL: string | undefined;
@@ -129,7 +138,7 @@ export async function handleVoicePipelineTurnWithStore(
   // student-text/gate/grader machinery and just produce the first move from the confirmed
   // problem. Branches early because none of the per-student-turn artifacts apply.
   if (request.kickoff) {
-    return handleKickoffTurn(detail, request.sessionId, options, store, requestContext.ownerKey);
+    return handleKickoffTurn(detail, request.sessionId, options, env, store, requestContext.ownerKey);
   }
 
   const studentText = await readStudentText(request, options);
@@ -182,7 +191,7 @@ export async function handleVoicePipelineTurnWithStore(
       studentText,
       supportLevel
     },
-    options
+    env
   );
 
   const audio = await createTutorSpeech(action.spokenUtterance, options);
@@ -312,6 +321,7 @@ async function handleKickoffTurn(
   detail: TutorSessionDetail,
   sessionId: string,
   options: VoicePipelineOptions,
+  env: VoicePipelineServiceEnv,
   store: SessionStore,
   ownerKey: string
 ): Promise<VoicePipelineTurnResponse> {
@@ -337,7 +347,7 @@ async function handleKickoffTurn(
       studentText: "",
       supportLevel
     },
-    options
+    env
   );
 
   const audio = await createTutorSpeech(action.spokenUtterance, options);
@@ -602,7 +612,7 @@ async function transcribeAudio(
   audio: VoicePipelineAudioInput,
   options: VoicePipelineOptions
 ): Promise<string> {
-  const apiKey = requireOpenAiApiKey(options);
+  const apiKey = requireOpenAiApiKey(options.apiKey);
   const form = new FormData();
   const blob = dataUrlToBlob(audio.dataUrl, audio.mimeType);
 
@@ -626,39 +636,21 @@ async function transcribeAudio(
 
 async function proposeTutorAction(
   input: TutorTurnInput,
-  options: VoicePipelineOptions
+  env: VoicePipelineServiceEnv
 ): Promise<ProposedTutorAction> {
   const phase = input.detail.session.currentPhase;
   const gateStatus = input.gateStatus;
   let rejectionReasons: string[] = [];
 
   for (let attempt = 0; attempt < maxTutorAttempts; attempt += 1) {
-    const payload = await fetchOpenAiJson("https://api.openai.com/v1/responses", {
-      apiKey: requireOpenAiApiKey(options),
-      body: JSON.stringify({
-        input: createTutorInput(input),
-        instructions: tutorActionInstructions(
-          phase,
-          gateStatus,
-          input.stepVerifierVerdict,
-          rejectionReasons,
-          input.kickoff ?? false
-        ),
-        model: options.tutorModel,
-        text: {
-          format: {
-            name: "tutor_action",
-            schema: proposedTutorActionJsonSchema(phase, gateStatus),
-            strict: true,
-            type: "json_schema"
-          }
-        }
-      }),
-      headers: {
-        "Content-Type": "application/json"
-      },
-      method: "POST"
-    });
+    const instructions = tutorActionInstructions(
+      phase,
+      gateStatus,
+      input.stepVerifierVerdict,
+      rejectionReasons,
+      input.kickoff ?? false
+    );
+    const payload = await proposeTutorActionViaBinding(input, instructions, env);
     const outputText = extractOutputText(payload);
 
     if (!outputText) {
@@ -700,6 +692,31 @@ async function proposeTutorAction(
   });
 }
 
+/**
+ * The tutor's model call crosses the REASONING binding: the full scrubbed prompt
+ * (instructions + the JSON prompt) ships as the workflow `input`, with the optional
+ * per-turn image as a separate payload field. The re-ask loop wraps this — one binding
+ * call per attempt — so a binding failure propagates as HttpError(502) and kills the turn
+ * BEFORE commit (the tutor is NOT fail-soft; never retry past a successful commit since
+ * TTS may have played).
+ *
+ * Returns the result wrapped in a synthetic `{ output_text }` envelope so the caller's
+ * existing `extractOutputText` + `JSON.parse` + `proposedTutorActionFromJson` path is reused.
+ */
+async function proposeTutorActionViaBinding(
+  input: TutorTurnInput,
+  instructions: string,
+  env: VoicePipelineServiceEnv
+): Promise<JsonValue> {
+  const composedInput = composeReasoningInput(instructions, createTutorPrompt(input));
+  const extra: Record<string, JsonValue> = {};
+  if (input.image) {
+    extra.image = splitPromptImage(input.image.dataUrl);
+  }
+  const result = await runReasoningWorkflow("tutor-turn", composedInput, env, extra);
+  return { output_text: JSON.stringify(result) };
+}
+
 async function createTutorSpeech(
   text: string,
   options: VoicePipelineOptions
@@ -713,7 +730,7 @@ async function createTutorSpeech(
       voice: options.voice
     }),
     headers: {
-      Authorization: `Bearer ${requireOpenAiApiKey(options)}`,
+      Authorization: `Bearer ${requireOpenAiApiKey(options.apiKey)}`,
       "Content-Type": "application/json"
     },
     method: "POST",
@@ -721,7 +738,7 @@ async function createTutorSpeech(
   });
 
   if (!response.ok) {
-    throw new HttpError(response.status, "OpenAI text-to-speech request failed", await readOpenAiError(response));
+    throw new HttpError(response.status, "OpenAI text-to-speech request failed", await fetchOpenAiSpeechError(response));
   }
 
   const bytes = new Uint8Array(await response.arrayBuffer());
@@ -730,29 +747,6 @@ async function createTutorSpeech(
     mimeType: speechMimeType,
     size: bytes.byteLength
   };
-}
-
-function createTutorInput(input: TutorTurnInput): Array<Record<string, JsonValue>> {
-  const content: Array<Record<string, JsonValue>> = [
-    {
-      text: createTutorPrompt(input),
-      type: "input_text"
-    }
-  ];
-
-  if (input.image) {
-    content.push({
-      image_url: input.image.dataUrl,
-      type: "input_image"
-    });
-  }
-
-  return [
-    {
-      content,
-      role: "user"
-    }
-  ];
 }
 
 function createTutorPrompt(input: TutorTurnInput): string {
@@ -867,22 +861,6 @@ Hard rules:
 - "nextPhase" is where the session should go next; keep it at "${phase}" unless the student is ready to move on.${retry}`;
 }
 
-function proposedTutorActionJsonSchema(
-  phase: SessionPhase,
-  gateStatus: ComprehensionGateStatus | null
-): Record<string, JsonValue> {
-  return {
-    additionalProperties: false,
-    properties: {
-      move: { enum: [...allowedMoves(phase)], type: "string" },
-      nextPhase: { enum: [...allowedNextPhases(phase, gateStatus)], type: "string" },
-      spokenUtterance: { type: "string" }
-    },
-    required: ["move", "nextPhase", "spokenUtterance"],
-    type: "object"
-  };
-}
-
 const proposableMoves: readonly ProposedMove[] = [...tutorMoves, ...gateForbiddenMoves];
 
 function proposedTutorActionFromJson(value: JsonValue, phase: SessionPhase): ProposedTutorAction {
@@ -970,30 +948,12 @@ function projectToPublicLesson(
   };
 }
 
-async function fetchOpenAiJson(
-  url: string,
-  init: RequestInit & { apiKey: string; headers?: Record<string, string> }
-): Promise<JsonValue> {
-  const { apiKey, headers, ...requestInit } = init;
-  const response = await fetch(url, {
-    ...requestInit,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      ...headers
-    },
-    signal: AbortSignal.timeout(openAiRequestTimeoutMs)
-  });
-  const payload = await readOpenAiJson(response);
-
-  if (!response.ok) {
-    throw new HttpError(response.status, "OpenAI request failed", payload);
-  }
-
-  return payload;
-}
-
-async function readOpenAiJson(response: Response): Promise<JsonValue> {
-  const text = await readLimitedResponseText(response, maxOpenAiJsonResponseBytes);
+async function fetchOpenAiSpeechError(response: Response): Promise<JsonValue> {
+  // The TTS call reads a binary body on success, so it can't share the JSON-text helper
+  // the reasoning calls use; this is the one place the OpenAI client stays inline. The
+  // error body, though, is JSON text — read it limited so an upstream error page can't
+  // exhaust memory before the HttpError is thrown.
+  const text = await readLimitedResponseText(response, maxOpenAiSpeechErrorBytes);
 
   if (!text) {
     return {};
@@ -1004,10 +964,6 @@ async function readOpenAiJson(response: Response): Promise<JsonValue> {
   } catch {
     return { error: text };
   }
-}
-
-async function readOpenAiError(response: Response): Promise<JsonValue> {
-  return readOpenAiJson(response);
 }
 
 async function readLimitedResponseText(response: Response, maxBytes: number): Promise<string> {
@@ -1045,35 +1001,25 @@ async function readLimitedResponseText(response: Response, maxBytes: number): Pr
   return new TextDecoder().decode(bytes);
 }
 
-function extractOutputText(payload: JsonValue): string {
-  const root = asRecord(payload);
-  const direct = asString(root.output_text);
-
-  if (direct) {
-    return direct;
+/**
+ * Splits a `data:<mime>;base64,<data>` URL into the Flue PromptImage fields the
+ * tutor-turn workflow expects (`{ type: 'image', data, mimeType }`). The data URL is the
+ * shape VoicePreparedImage already carries; the workflow reattaches it as a vision input.
+ */
+function splitPromptImage(dataUrl: string): JsonValue {
+  const commaIndex = dataUrl.indexOf(",");
+  if (!dataUrl.startsWith("data:") || commaIndex < 0) {
+    throw new HttpError(400, "Tutor image payload must be a base64 data URL.");
   }
-
-  const output = Array.isArray(root.output) ? root.output : [];
-  const pieces: string[] = [];
-
-  for (const item of output) {
-    const content = asRecord(item).content;
-
-    if (!Array.isArray(content)) {
-      continue;
-    }
-
-    for (const part of content) {
-      const record = asRecord(part);
-      const text = asString(record.text);
-
-      if (text) {
-        pieces.push(text);
-      }
-    }
+  const metadata = dataUrl.slice("data:".length, commaIndex);
+  const isBase64 = metadata.split(";").some((part) => part.toLowerCase() === "base64");
+  if (!isBase64) {
+    throw new HttpError(400, "Tutor image payload must be a base64 data URL.");
   }
-
-  return pieces.join("\n").trim();
+  const parts = metadata.split(";");
+  const first = parts[0] ?? "";
+  const mimeType = first.includes("/") ? first : "image/jpeg";
+  return { type: "image" as const, data: dataUrl.slice(commaIndex + 1), mimeType };
 }
 
 function dataUrlToBlob(dataUrl: string, fallbackMimeType: string): Blob {
@@ -1112,14 +1058,6 @@ function bytesToBase64(bytes: Uint8Array): string {
   }
 
   return btoa(binary);
-}
-
-function requireOpenAiApiKey(options: VoicePipelineOptions): string {
-  if (!options.apiKey) {
-    throw new HttpError(500, "Missing OPENAI_API_KEY");
-  }
-
-  return options.apiKey;
 }
 
 function asRecord(value: JsonValue | undefined): Record<string, JsonValue> {

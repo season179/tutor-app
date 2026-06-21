@@ -1,12 +1,4 @@
 import {
-  OpenAIRealtimeWebRTC,
-  RealtimeAgent,
-  RealtimeSession,
-  type RealtimeSessionConfig,
-  type TransportEvent
-} from "@openai/agents/realtime";
-
-import {
   createAudioVoicePipelineTurn,
   createImageVoicePipelineTurn,
   createKickoffVoicePipelineTurn,
@@ -14,8 +6,6 @@ import {
 } from "./voice-pipeline-api.js";
 import type {
   OpenAIVoicePipelineSessionDescriptor,
-  OpenAIRealtimeSessionDescriptor,
-  VoiceBackend,
   VoicePipelineSessionState,
   VoiceSessionDescriptor,
   VoiceUserTurn
@@ -59,39 +49,20 @@ type VoiceClientAdapterOptions = {
   mediaStream?: MediaStream | undefined;
 };
 
+/**
+ * The single voice client adapter. The turn-based OpenAI pipeline is the only
+ * backend, so there is no provider switch — `createVoiceClientAdapter` always
+ * returns the pipeline adapter. (The realtime/WebRTC and LiveKit adapters were
+ * removed in the Flue migration plan's Phase 1.)
+ *
+ * `requestReply` stays on the adapter surface (the typed-turn path no-ops it) so
+ * call sites don't branch on provider; the pipeline adapter implements it as a
+ * turn send, mirroring what the realtime arm used to do.
+ */
 export function createVoiceClientAdapter(
-  provider: VoiceBackend,
   options: VoiceClientAdapterOptions
 ): VoiceClientAdapter {
-  if (provider === "openai-voice-pipeline") {
-    return new OpenAIVoicePipelineClientAdapter(options);
-  }
-
-  if (provider === "openai-realtime") {
-    return new OpenAIRealtimeClientAdapter(options);
-  }
-
-  if (provider === "livekit-agents") {
-    return new LiveKitAgentsClientAdapter();
-  }
-
-  const exhaustiveProvider: never = provider;
-  throw new Error(`Unsupported voice backend: ${String(exhaustiveProvider)}`);
-}
-
-function createSessionConfig(session: OpenAIRealtimeSessionDescriptor): Partial<RealtimeSessionConfig> {
-  return {
-    audio: {
-      output: {
-        voice: session.voice
-      }
-    },
-    outputModalities: ["audio"]
-  };
-}
-
-function throwLiveKitAgentsUnavailable(): never {
-  throw new Error("LiveKit Agents browser adapter is not implemented in this foundation pass.");
+  return new OpenAIVoicePipelineClientAdapter(options);
 }
 
 abstract class BaseVoiceClientAdapter implements VoiceClientAdapter {
@@ -343,195 +314,6 @@ class OpenAIVoicePipelineClientAdapter extends BaseVoiceClientAdapter {
     }
 
     return this.descriptor;
-  }
-}
-
-class OpenAIRealtimeClientAdapter extends BaseVoiceClientAdapter {
-  private readonly audioElement: HTMLAudioElement;
-  private readonly mediaStream: MediaStream;
-  private realtimeSession: RealtimeSession | undefined;
-  private transport: OpenAIRealtimeWebRTC | undefined;
-
-  constructor(options: VoiceClientAdapterOptions) {
-    super();
-    if (!options.mediaStream) {
-      throw new Error("Realtime adapter requires microphone access.");
-    }
-
-    this.audioElement = options.audioElement;
-    this.mediaStream = options.mediaStream;
-  }
-
-  async connect(session: VoiceSessionDescriptor): Promise<void> {
-    if (session.provider !== "openai-realtime") {
-      throw new Error(`OpenAI adapter cannot connect provider ${session.provider}.`);
-    }
-
-    this.status = "connecting";
-    this.emit({ type: "connecting" });
-
-    const transport = new OpenAIRealtimeWebRTC({
-      audioElement: this.audioElement,
-      mediaStream: this.mediaStream
-    });
-    const tutorAgent = new RealtimeAgent({
-      instructions: session.tutorPolicy.instructions,
-      name: session.tutorPolicy.agentName
-    });
-    const realtimeSession = new RealtimeSession(tutorAgent, {
-      config: createSessionConfig(session),
-      model: session.model,
-      transport
-    });
-
-    this.transport = transport;
-    this.realtimeSession = realtimeSession;
-    this.wireEvents(realtimeSession, transport);
-
-    try {
-      await realtimeSession.connect({ apiKey: session.clientSecret });
-      this.status = "connected";
-      this.emit({ type: "connected" });
-    } catch (error) {
-      this.status = "disconnected";
-      this.emit({ error, type: "error" });
-      throw error;
-    }
-  }
-
-  disconnect(): void {
-    this.status = "disconnected";
-    this.realtimeSession?.close();
-  }
-
-  finishAudioTurn(): Promise<void> {
-    throw new Error("Manual audio turns are not supported by the realtime adapter.");
-  }
-
-  getPayloadLimitBytes(): number | undefined {
-    const maxMessageSize = this.transport?.connectionState.peerConnection?.sctp?.maxMessageSize;
-
-    if (!maxMessageSize || !Number.isFinite(maxMessageSize)) {
-      return undefined;
-    }
-
-    return maxMessageSize;
-  }
-
-  requestOpeningTurn(): void {
-    // The realtime opening is driven by requestReply(greetingInstructions) in
-    // use-voice-session, so this provider-specific path is never taken here.
-    throw new Error("Use requestReply to open a realtime session.");
-  }
-
-  requestReply(instructions?: string): void {
-    const transport = this.requireTransport();
-    transport.requestResponse(instructions ? { instructions } : {});
-  }
-
-  async startAudioTurn(): Promise<void> {
-    throw new Error("Manual audio turns are not supported by the realtime adapter.");
-  }
-
-  sendUserTurn(turn: VoiceUserTurn): void {
-    const content: Array<{ text: string; type: "input_text" } | { image: string; type: "input_image" }> = [
-      {
-        text: turn.text,
-        type: "input_text"
-      }
-    ];
-
-    if (turn.image) {
-      content.push({
-        image: turn.image.dataUrl,
-        type: "input_image"
-      });
-    }
-
-    this.requireTransport().sendMessage(
-      {
-        content,
-        role: "user",
-        type: "message"
-      },
-      {},
-      { triggerResponse: false }
-    );
-  }
-
-  private requireTransport(): OpenAIRealtimeWebRTC {
-    if (!this.transport) {
-      throw new Error("Voice session is not connected.");
-    }
-
-    return this.transport;
-  }
-
-  private wireEvents(realtimeSession: RealtimeSession, transport: OpenAIRealtimeWebRTC): void {
-    transport.on("connection_change", (connectionStatus) => {
-      this.emit({ label: `Voice connection ${connectionStatus}`, type: "debug_event" });
-
-      if (connectionStatus !== "disconnected") {
-        return;
-      }
-
-      this.status = "disconnected";
-      this.emit({ type: "disconnected" });
-    });
-
-    transport.on("*", (event: TransportEvent) => {
-      this.emit({
-        label: event.type || "Provider event",
-        type: "debug_event",
-        value: event
-      });
-    });
-
-    realtimeSession.on("audio_start", () => {
-      this.emit({ type: "reply_started" });
-    });
-
-    realtimeSession.on("audio_stopped", () => {
-      this.emit({ type: "reply_finished" });
-    });
-
-    realtimeSession.on("error", ({ error }) => {
-      this.emit({ error, type: "error" });
-    });
-  }
-}
-
-class LiveKitAgentsClientAdapter extends BaseVoiceClientAdapter {
-  connect(): Promise<void> {
-    throwLiveKitAgentsUnavailable();
-  }
-
-  disconnect(): void {
-    this.status = "disconnected";
-  }
-
-  finishAudioTurn(): Promise<void> {
-    throwLiveKitAgentsUnavailable();
-  }
-
-  getPayloadLimitBytes(): number | undefined {
-    return undefined;
-  }
-
-  requestOpeningTurn(): void {
-    throwLiveKitAgentsUnavailable();
-  }
-
-  requestReply(): void {
-    throwLiveKitAgentsUnavailable();
-  }
-
-  sendUserTurn(): void {
-    throwLiveKitAgentsUnavailable();
-  }
-
-  async startAudioTurn(): Promise<void> {
-    throwLiveKitAgentsUnavailable();
   }
 }
 

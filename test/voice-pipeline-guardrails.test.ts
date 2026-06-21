@@ -369,15 +369,19 @@ test("a verifier response missing output text fails safe to unknown (turn contin
   }
 });
 
-test("a gate-checker HTTP error fails the whole turn with the upstream status (unlike the verifier)", async () => {
+test("a gate-checker binding error fails the whole turn (unlike the verifier's fail-soft)", async () => {
   const store = new MemorySessionStore();
   const session = await store.createSession(ownerKey, { title: "Gate 500" });
   await seedGateSession(store, session.id, "needs_context_read");
 
   // PLAN NOTE: §7c groups this under "short-circuits the gate-checker swallows." The real
-  // code does NOT swallow it: checkGateStage is called UNWRAPPED (line ~147 of the
-  // service), so its HttpError propagates and the turn dies. Only runVerifierAgent sits
-  // inside gradeStudentTurn's try/catch. The asymmetry is load-bearing — lock it here.
+  // code does NOT swallow it: checkGateStage is called UNWRAPPED, so its HttpError
+  // propagates and the turn dies. Only runVerifierAgent sits inside gradeStudentTurn's
+  // try/catch. The asymmetry is load-bearing — lock it here.
+  //
+  // Over the REASONING binding a Worker B failure normalizes to HttpError(502) (the gate
+  // contract is "the turn dies before commit," not upstream-status preservation); the test
+  // asserts that death + the tutor/TTS never running, which is the load-bearing part.
   fake = installVoiceProviders({
     gateChecker: { status: 500 },
     tutor: { move: "three_reads_1", nextPhase: "frame_task", spokenUtterance: "Read it again." },
@@ -391,7 +395,7 @@ test("a gate-checker HTTP error fails the whole turn with the upstream status (u
       store,
       context
     ),
-    (error: unknown) => error instanceof HttpError && error.status === 500
+    (error: unknown) => error instanceof HttpError && error.status === 502
   );
   // The turn died at the gate-check; the tutor and TTS never ran.
   assert.equal(fake.calls.counts.tutor, 0);

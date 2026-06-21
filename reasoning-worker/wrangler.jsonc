@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ai-tutor-reasoning",
+  "compatibility_date": "2026-06-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "head_sampling_rate": 1
+    }
+  },
+  // Model specifier is provider/model (e.g. openai/gpt-5.5, openrouter/openai/gpt-5.5).
+  // Swapping the reasoning provider/model is a change to this one var plus the matching
+  // *_API_KEY secret — no domain code in Worker A changes. See docs/adr/0001-flue-reasoning-worker.md.
+  "vars": {
+    "REASONING_MODEL": "openai/gpt-5.5"
+  },
+  "secrets": {
+    "required": ["OPENAI_API_KEY"]
+  },
+  "migrations": [
+    {
+      "tag": "v1-flue-reasoning",
+      "new_sqlite_classes": [
+        "FlueRegistry",
+        "FlueExtractQuestionWorkflow",
+        "FlueGateCheckWorkflow",
+        "FlueVerifierWorkflow",
+        "FlueTutorTurnWorkflow"
+      ]
+    }
+  ]
+}

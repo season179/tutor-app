@@ -20,11 +20,7 @@ import {
   isOwnedProblemImageKey,
   type ProblemImageStoreEnv
 } from "./problem-image-store.js";
-import {
-  createQuestionExtractionOptions,
-  extractQuestionFromImageUrl,
-  type QuestionExtractionServiceEnv
-} from "./question-extraction-service.js";
+import { extractQuestionFromImageUrl, type QuestionExtractionServiceEnv } from "./question-extraction-service.js";
 
 export type ProblemContextHandlerEnv = ProblemImageStoreEnv & QuestionExtractionServiceEnv;
 
@@ -124,18 +120,23 @@ export async function handlePreviewUrlRequest(
 
 export function createProblemContextHandlerEnv(source: ProblemContextHandlerEnv): ProblemContextHandlerEnv {
   return {
-    OPENAI_API_KEY: source.OPENAI_API_KEY,
     OPENAI_VISION_MODEL: source.OPENAI_VISION_MODEL,
     R2_ACCESS_KEY_ID: source.R2_ACCESS_KEY_ID,
     R2_ACCOUNT_ID: source.R2_ACCOUNT_ID,
     R2_BUCKET_NAME: source.R2_BUCKET_NAME,
     R2_SECRET_ACCESS_KEY: source.R2_SECRET_ACCESS_KEY,
+    // Extraction crosses the REASONING binding, so it MUST travel through this narrowed env;
+    // dropping it makes extractQuestionFromImageUrl throw HttpError(502) "binding absent".
+    ...(source.REASONING ? { REASONING: source.REASONING } : {}),
     ...(source.PROBLEM_IMAGES ? { PROBLEM_IMAGES: source.PROBLEM_IMAGES } : {})
   };
 }
 
 export function assertProblemContextEnv(env: ProblemContextHandlerEnv): void {
-  createQuestionExtractionOptions(env);
+  // Extraction now crosses the REASONING binding; the only env this handler needs directly
+  // is the R2 credentials for presigning image URLs. (OPENAI_API_KEY is no longer required
+  // here — the model call, and its key, live in Worker B.)
+  void env;
 }
 
 async function requireOwnedSession(store: SessionStore, ownerKey: string, sessionId: string): Promise<void> {
