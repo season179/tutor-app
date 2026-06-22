@@ -70,8 +70,10 @@ test("projects a validated turn to the legacy public lesson shape and advances t
   assert.deepEqual(response.session, sessionState({ currentPhase: "frame_task" }));
   assert.equal("hiddenState" in response.lesson, false);
   assert.equal("safetyNotes" in response.lesson, false);
-  assert.equal(response.audio.mimeType, "audio/mpeg");
-  assert.equal(response.audio.size, speechBytes.byteLength);
+  // Gemini TTS returns bare PCM; the provider wraps it in a WAV container (44-byte header
+  // + PCM body) before handing it back, so the client <audio> can play it.
+  assert.equal(response.audio.mimeType, "audio/wav");
+  assert.equal(response.audio.size, speechBytes.byteLength + 44);
 
   const detail = await store.getSession(ownerKey, session.id);
   assert.equal(detail?.session.currentPhase, "frame_task");

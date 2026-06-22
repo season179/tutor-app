@@ -13,7 +13,14 @@ export const openRouterRequestTimeoutMs = 30_000;
 
 const transcriptionsUrl = "https://openrouter.ai/api/v1/audio/transcriptions";
 const speechUrl = "https://openrouter.ai/api/v1/audio/speech";
-const speechMimeType = "audio/mpeg";
+// Gemini TTS returns bare PCM; wrapPcmAsWav frames it in a WAV container so the browser
+// <audio> element can play it — no browser accepts bare PCM as a playable media type.
+const speechMimeType = "audio/wav";
+// PCM defaults used when the response content-type omits rate/channels params.
+const defaultPcmSampleRate = 24_000;
+const defaultPcmChannels = 1;
+const pcmBitsPerSample = 16;
+const wavHeaderLength = 44;
 
 export type OpenRouterAudioOptions = {
   // `apiKey` reaches `requireOpenRouterApiKey` inside the helpers, which throws HttpError(500)
@@ -92,7 +99,11 @@ export async function transcribeViaOpenRouter(
  * `instructions` field, so the tone direction ("calm, patient tutor") is folded into
  * `input` as a leading directive — Gemini steers on natural-language input.
  *
- * Returns the existing `data:audio/mpeg;base64,...` output the client already renders.
+ * Gemini TTS only supports `response_format: "pcm"` (rejected with HTTP 400 on "mp3"),
+ * and the PCM it returns is 16-bit little-endian at 24 kHz mono (per the response
+ * content-type `audio/pcm;rate=24000;channels=1`). Browsers cannot play bare PCM, so the
+ * bytes are wrapped in a minimal WAV container before being handed back to the client's
+ * `<audio>` element. Returns the existing `data:audio/wav;base64,...` output shape.
  */
 export async function synthesizeSpeechViaOpenRouter(
   text: string,
@@ -106,7 +117,7 @@ export async function synthesizeSpeechViaOpenRouter(
     body: JSON.stringify({
       input,
       model: options.model,
-      response_format: "mp3",
+      response_format: "pcm",
       voice: options.voice
     }),
     headers: {
@@ -125,14 +136,85 @@ export async function synthesizeSpeechViaOpenRouter(
     );
   }
 
-  // Success body is binary audio — read it in full (no JSON parse). Mirrors the
-  // OpenAI TTS path: bytes → base64 data URL the client renders as <audio>.
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  // Success body is bare PCM — wrap it in a WAV header so the client <audio> can play it.
+  const pcm = new Uint8Array(await response.arrayBuffer());
+  const { sampleRate, channels } = parsePcmContentRange(response);
+  const wav = wrapPcmAsWav(pcm, sampleRate, channels);
   return {
-    dataUrl: `data:${speechMimeType};base64,${bytesToBase64(bytes)}`,
+    dataUrl: `data:${speechMimeType};base64,${bytesToBase64(wav)}`,
     mimeType: speechMimeType,
-    size: bytes.byteLength
+    size: wav.byteLength
   };
+}
+
+/**
+ * Parses `audio/pcm;rate=<n>;channels=<n>` (OpenRouter's TTS content-type) for the PCM
+ * params the WAV header needs. Falls back to the Gemini defaults (24 kHz mono) when a
+ * param is missing or malformed — never throws, since OpenRouter already returned 2xx.
+ */
+function parsePcmContentRange(response: Response): { sampleRate: number; channels: number } {
+  const contentType = response.headers.get("content-type") ?? "";
+  const sampleRate = matchNumber(contentType, /rate=(\d+)/, defaultPcmSampleRate);
+  const channels = matchNumber(contentType, /channels=(\d+)/, defaultPcmChannels);
+  return { sampleRate, channels };
+}
+
+function matchNumber(haystack: string, pattern: RegExp, fallback: number): number {
+  const match = haystack.match(pattern);
+  if (!match) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(match[1] ?? "", 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/**
+ * Frames raw 16-bit little-endian PCM in a 44-byte RIFF/WAVE header. The PCM body is
+ * copied unchanged after the header so the result is a complete, browser-playable WAV.
+ */
+function wrapPcmAsWav(pcm: Uint8Array, sampleRate: number, channels: number): Uint8Array {
+  const dataLength = pcm.byteLength;
+  const byteRate = sampleRate * channels * (pcmBitsPerSample / 8);
+  const blockAlign = channels * (pcmBitsPerSample / 8);
+  const chunkSize = wavHeaderLength - 8 + dataLength;
+
+  const buffer = new Uint8Array(wavHeaderLength + dataLength);
+  const view = new DataView(buffer.buffer);
+  let offset = 0;
+
+  const writeString = (value: string): void => {
+    for (const code of value) {
+      view.setUint8(offset++, code.codePointAt(0) ?? 0);
+    }
+  };
+  const writeUint32 = (value: number): void => {
+    view.setUint32(offset, value, true);
+    offset += 4;
+  };
+  const writeUint16 = (value: number): void => {
+    view.setUint16(offset, value, true);
+    offset += 2;
+  };
+
+  // RIFF header
+  writeString("RIFF");
+  writeUint32(chunkSize);
+  writeString("WAVE");
+  // fmt chunk
+  writeString("fmt ");
+  writeUint32(16); // PCM fmt chunk size
+  writeUint16(1); // audio format: 1 = linear PCM
+  writeUint16(channels);
+  writeUint32(sampleRate);
+  writeUint32(byteRate);
+  writeUint16(blockAlign);
+  writeUint16(pcmBitsPerSample);
+  // data chunk
+  writeString("data");
+  writeUint32(dataLength);
+
+  buffer.set(pcm, wavHeaderLength);
+  return buffer;
 }
 
 /**
