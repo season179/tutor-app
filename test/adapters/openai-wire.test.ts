@@ -1,15 +1,17 @@
 /**
- * OpenAI wire + reasoning-binding conformance — Tier 2.
+ * Audio wire + reasoning-binding conformance — Tier 2.
  *
  * Deliberately provider/transport-specific. Two concerns:
  *  (a) The shared `extractOutputText` parser (`src/providers/openai/openai-responses.ts`),
  *      which the tutor path still uses to unwrap the synthetic `{ output_text }` envelope the
  *      binding helper returns.
- *  (b) Wire shapes that still live in Worker A: STT's multipart transcription body, and the
- *      tutor prompt content / image attachment as they cross the REASONING binding.
+ *  (b) Wire shapes that still live in Worker A: STT/TTS now cross OpenRouter's audio endpoints
+ *      (`/audio/transcriptions` JSON with `input_audio: { data, format }`, `/audio/speech` JSON
+ *      returning binary), and the tutor prompt content / image attachment cross the REASONING
+ *      binding.
  *
- * The reasoning stages themselves no longer touch the OpenAI wire (they cross the binding);
- * the integration tests below assert the prompt content + image ride the workflow payload.
+ * The reasoning stages themselves never touch a provider wire (they cross the binding); the
+ * integration tests below assert the prompt content + image ride the workflow payload.
  */
 
 import assert from "node:assert/strict";
@@ -59,10 +61,11 @@ test("extractOutputText returns empty string when no text is present anywhere", 
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Request encoding: STT multipart (fetch transport) + tutor prompt/image (binding)
+// Request encoding: STT/TTS over OpenRouter (fetch transport) + tutor prompt/image (binding)
 //
-// The reasoning stages cross the REASONING binding; STT stays on globalThis.fetch.
-// These install the harness fake so both transports are exercised in one turn.
+// The reasoning stages cross the REASONING binding; STT/TTS cross globalThis.fetch to
+// OpenRouter's audio endpoints. These install the harness fake so both transports are
+// exercised in one turn.
 // ──────────────────────────────────────────────────────────────────────────────
 
 let fake: VoiceProviderFake | null = null;
@@ -71,11 +74,11 @@ afterEach(() => {
   fake = null;
 });
 
-test("transcription is encoded as multipart form data with the audio blob", async () => {
-  // STT + TTS stay on globalThis.fetch; the reasoning stages cross the binding. To assert
-  // the raw STT multipart shape (which the domain harness hides), this test sets its OWN
-  // globalThis.fetch for STT/TTS and builds the reasoning binding fake WITHOUT installing
-  // it as globalThis.fetch (so the two don't fight over globalThis.fetch).
+test("transcription is sent to OpenRouter as JSON with bare-base64 input_audio", async () => {
+  // STT + TTS stay on globalThis.fetch (OpenRouter); the reasoning stages cross the binding.
+  // To assert the raw OpenRouter STT JSON shape (which the domain harness hides), this test
+  // sets its OWN globalThis.fetch for STT/TTS and builds the reasoning binding fake WITHOUT
+  // installing it as globalThis.fetch (so the two don't fight over globalThis.fetch).
   const store = new MemorySessionStore();
   const session = await store.createSession(ownerKey, { title: "Audio encoding" });
   await store.saveProblemContext(ownerKey, {
@@ -92,16 +95,17 @@ test("transcription is encoded as multipart form data with the audio blob", asyn
     supportLevel: 0
   });
 
-  let transcribeBody: FormData | null = null;
+  let transcribeBody: { model?: string; input_audio?: { data?: string; format?: string } } | null = null;
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = String(input);
-    if (url.endsWith("/v1/audio/transcriptions")) {
-      assert.ok(init?.body instanceof FormData, "transcription body must be multipart form data");
-      transcribeBody = init.body as FormData;
+    if (url.endsWith("/audio/transcriptions")) {
+      // OpenRouter STT is JSON (NOT multipart): { model, input_audio: { data, format } }.
+      assert.ok(typeof init?.body === "string", "OpenRouter transcription body must be JSON");
+      transcribeBody = JSON.parse(init.body as string) as typeof transcribeBody;
       return Response.json({ text: "What the student said." });
     }
-    if (url.endsWith("/v1/audio/speech")) {
+    if (url.endsWith("/audio/speech")) {
       return new Response(new Uint8Array([1]));
     }
     throw new Error(`Unexpected fetch: ${url}`);
@@ -131,12 +135,12 @@ test("transcription is encoded as multipart form data with the audio blob", asyn
       context
     );
 
-    assert.ok(transcribeBody);
-    const audioFile = transcribeBody!.get("file");
-    assert.ok(audioFile instanceof Blob);
-    // The adapter parses the data URL's media type and strips any parameter suffix.
-    assert.equal((audioFile as Blob).type, "audio/webm");
-    assert.equal(transcribeBody!.get("response_format"), "json");
+    assert.ok(transcribeBody, "an OpenRouter transcription call must have been made");
+    // The `data` URL prefix is stripped — OpenRouter wants BARE base64, and rejects a data URL.
+    assert.equal(transcribeBody!.input_audio?.data, "AQIDBA==");
+    // The format token is derived from the audio MIME; webm (incl. ;codecs=opus) → "webm".
+    assert.equal(transcribeBody!.input_audio?.format, "webm");
+    assert.equal(transcribeBody!.model, "qwen/qwen3-asr-flash-2026-02-10");
   } finally {
     globalThis.fetch = originalFetch;
   }

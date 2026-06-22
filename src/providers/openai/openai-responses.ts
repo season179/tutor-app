@@ -1,53 +1,23 @@
-import { HttpError, type JsonValue } from "../../core/http-error.js";
+import type { JsonValue } from "../../core/http-error.js";
 import { isJsonObject } from "../../core/schema-parser.js";
 
-const maxOpenAiJsonResponseBytes = 256_000;
-export const openAiRequestTimeoutMs = 30_000;
+// This module once owned the shared OpenAI fetch helper (fetchOpenAiJson,
+// requireOpenAiApiKey, openAiRequestTimeoutMs). After the audio provider swap to
+// OpenRouter (STT/TTS now live in src/providers/openrouter/openrouter-audio.ts) and the
+// reasoning migration to the Flue binding (gate/verifier/tutor/extraction cross the
+// REASONING service binding — see docs/adr/0001-flue-reasoning-worker.md), Worker A makes
+// NO direct OpenAI calls. Only `extractOutputText` survives: the tutor-turn binding path
+// wraps Worker B's structured result in a synthetic `{ output_text }` envelope so the
+// existing parse/validate pipeline in voice-pipeline-service.ts is reused unchanged.
 
-export type OpenAiFetchOptions = {
-  apiKey: string;
-  body?: Blob | FormData | string | null;
-  headers?: Record<string, string>;
-  method?: string;
-};
-
-export function requireOpenAiApiKey(apiKey: string | undefined): string {
-  if (!apiKey) {
-    throw new HttpError(500, "Missing OPENAI_API_KEY");
-  }
-
-  return apiKey;
-}
-
-export async function fetchOpenAiJson(url: string, options: OpenAiFetchOptions): Promise<JsonValue> {
-  const init: RequestInit = {
-    headers: {
-      Authorization: `Bearer ${options.apiKey}`,
-      ...options.headers
-    },
-    method: options.method ?? "GET",
-    signal: AbortSignal.timeout(openAiRequestTimeoutMs)
-  };
-
-  if (options.body !== undefined) {
-    init.body = options.body;
-  }
-
-  const response = await fetch(url, init);
-
-  if (!response.ok) {
-    throw new HttpError(response.status, "OpenAI request failed", await readOpenAiError(response));
-  }
-
-  const text = await readLimitedResponseText(response, maxOpenAiJsonResponseBytes);
-
-  try {
-    return JSON.parse(text) as JsonValue;
-  } catch {
-    throw new HttpError(502, "OpenAI response was not valid JSON.", text.slice(0, 500));
-  }
-}
-
+/**
+ * Extracts the model's text output from an OpenAI-style response envelope.
+ *
+ * Used today only to unwrap the synthetic `{ output_text }` envelope the tutor-turn
+ * binding path builds around Worker B's structured result (see
+ * voice-pipeline-service.ts `proposeTutorActionViaBinding`). Handles both the flat
+ * `output_text` shape and the older `output[].content[].text` nested shape for back-compat.
+ */
 export function extractOutputText(payload: JsonValue): string {
   const root = asRecord(payload);
   const direct = asString(root.output_text);
@@ -77,57 +47,6 @@ export function extractOutputText(payload: JsonValue): string {
   }
 
   return pieces.join("\n").trim();
-}
-
-async function readOpenAiError(response: Response): Promise<string> {
-  const text = await readLimitedResponseText(response, 8_192);
-  if (!text) {
-    return response.statusText || "Unknown OpenAI error";
-  }
-
-  try {
-    const payload = JSON.parse(text) as JsonValue;
-    const error = asRecord(asRecord(payload).error);
-    return asString(error.message) ?? text;
-  } catch {
-    return text;
-  }
-}
-
-async function readLimitedResponseText(response: Response, maxBytes: number): Promise<string> {
-  const reader = response.body?.getReader();
-
-  if (!reader) {
-    return "";
-  }
-
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-
-    if (done) {
-      break;
-    }
-
-    totalBytes += value.byteLength;
-    if (totalBytes > maxBytes) {
-      throw new HttpError(502, "OpenAI response was too large");
-    }
-
-    chunks.push(value);
-  }
-
-  const bytes = new Uint8Array(totalBytes);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return new TextDecoder().decode(bytes);
 }
 
 function asRecord(value: unknown): Record<string, JsonValue> {

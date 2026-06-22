@@ -25,8 +25,13 @@ import * as v from "valibot";
 
 export const route: WorkflowRouteHandler = async (_context, next) => next();
 
+// The tutor is the only stage that may run on a different model from the other three
+// reasoning stages — the conversational LLM that consumes the transcript and emits the
+// spoken reply is hot-swappable independently of the gate/verifier/extraction models. It
+// falls back to REASONING_MODEL (the shared default) when TUTOR_MODEL is unset, so a
+// deployment that wants all four stages on one model sets only REASONING_MODEL.
 const tutor = createAgent(() => ({
-  model: process.env.REASONING_MODEL ?? "openai/gpt-5.5"
+  model: process.env.TUTOR_MODEL ?? process.env.REASONING_MODEL ?? "openai/gpt-5.5"
 }));
 
 // The shared structured-output contract. Mirrors the OpenAI proposedTutorActionJsonSchema

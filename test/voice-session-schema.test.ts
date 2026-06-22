@@ -31,10 +31,12 @@ const openAIPipelineSession: OpenAIVoicePipelineSessionDescriptor = {
   model: "gpt-5.5",
   provider: "openai-voice-pipeline",
   sessionId: "session-123",
-  transcribeModel: "gpt-4o-transcribe",
-  ttsModel: "gpt-4o-mini-tts",
+  // STT/TTS swapped to OpenRouter; these strings are opaque to the schema (it round-trips,
+  // doesn't enum-validate), but mirror the production defaults so the fixture tracks reality.
+  transcribeModel: "qwen/qwen3-asr-flash-2026-02-10",
+  ttsModel: "google/gemini-3.1-flash-tts-preview",
   tutorPolicy,
-  voice: "marin"
+  voice: "Aoede"
 };
 
 test("parseVoiceSessionDescriptor accepts a valid OpenAI voice pipeline session", () => {

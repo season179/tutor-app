@@ -1,10 +1,9 @@
 import { HttpError, type JsonValue } from "../../core/http-error.js";
+import { extractOutputText } from "../../providers/openai/openai-responses.js";
 import {
-  extractOutputText,
-  fetchOpenAiJson,
-  openAiRequestTimeoutMs,
-  requireOpenAiApiKey
-} from "../../providers/openai/openai-responses.js";
+  synthesizeSpeechViaOpenRouter,
+  transcribeViaOpenRouter
+} from "../../providers/openrouter/openrouter-audio.js";
 import type { ReasoningEnv } from "../../providers/reasoning/reasoning-binding.js";
 import { composeReasoningInput, runReasoningWorkflow } from "../../providers/reasoning/reasoning-binding.js";
 import { outputLanguageLabel } from "../tutoring/answer-checker.js";
@@ -64,31 +63,33 @@ import type {
 } from "./voice-types.js";
 
 export const defaultTutorModel = "gpt-5.5";
-export const defaultTranscribeModel = "gpt-4o-transcribe";
-export const defaultTtsModel = "gpt-4o-mini-tts";
-export const defaultTtsVoice = "marin";
+export const defaultTranscribeModel = "qwen/qwen3-asr-flash-2026-02-10";
+export const defaultTtsModel = "google/gemini-3.1-flash-tts-preview";
+// Gemini 3.1 Flash TTS voices are 30 mythological names; "Aoede" is the breezy, clear,
+// conversational voice closest to the previous "calm, warm, patient" tutor direction.
+export const defaultTtsVoice = "Aoede";
 
-const speechMimeType = "audio/mpeg";
-// Cap on the TTS upstream error body read for the HttpError payload (the success body is
-// binary and read in full via arrayBuffer). Mirrors the shared helper's response cap.
-const maxOpenAiSpeechErrorBytes = 8_192;
 // How many times the generator may be re-asked when its proposed turn fails the
 // phase rules before we give up. The gate must never be talked past, so a turn that
 // keeps proposing illegal moves fails rather than reaching TTS.
 const maxTutorAttempts = 2;
 
 export type VoicePipelineServiceEnv = ReasoningEnv & {
-  OPENAI_API_KEY: string | undefined;
+  // STT/TTS moved to OpenRouter; OPENROUTER_API_KEY is now the only audio-provider key
+  // Worker A holds (reasoning crosses the binding, and STT/TTS are the last direct
+  // provider calls in Worker A). The reasoning-stage model vars below are vestigial —
+  // reasoning lives in Worker B — but retained for back-compat with callers that read them.
+  OPENROUTER_API_KEY: string | undefined;
+  OPENROUTER_TRANSCRIBE_MODEL: string | undefined;
+  OPENROUTER_TTS_MODEL: string | undefined;
+  OPENROUTER_TTS_VOICE: string | undefined;
   OPENAI_GATE_CHECKER_MODEL?: string | undefined;
-  OPENAI_TRANSCRIBE_MODEL: string | undefined;
-  OPENAI_TTS_MODEL: string | undefined;
-  OPENAI_TTS_VOICE: string | undefined;
   OPENAI_TUTOR_MODEL: string | undefined;
   OPENAI_VERIFIER_MODEL?: string | undefined;
 };
 
 type VoicePipelineOptions = {
-  apiKey: string | undefined;
+  openRouterApiKey: string | undefined;
   transcribeModel: string;
   ttsModel: string;
   tutorModel: string;
@@ -111,11 +112,11 @@ type TutorTurnInput = {
 
 export function createVoicePipelineOptions(env: VoicePipelineServiceEnv): VoicePipelineOptions {
   return {
-    apiKey: env.OPENAI_API_KEY,
-    transcribeModel: env.OPENAI_TRANSCRIBE_MODEL ?? defaultTranscribeModel,
-    ttsModel: env.OPENAI_TTS_MODEL ?? defaultTtsModel,
+    openRouterApiKey: env.OPENROUTER_API_KEY,
+    transcribeModel: env.OPENROUTER_TRANSCRIBE_MODEL ?? defaultTranscribeModel,
+    ttsModel: env.OPENROUTER_TTS_MODEL ?? defaultTtsModel,
     tutorModel: env.OPENAI_TUTOR_MODEL ?? defaultTutorModel,
-    voice: env.OPENAI_TTS_VOICE ?? defaultTtsVoice
+    voice: env.OPENROUTER_TTS_VOICE ?? defaultTtsVoice
   };
 }
 
@@ -612,26 +613,10 @@ async function transcribeAudio(
   audio: VoicePipelineAudioInput,
   options: VoicePipelineOptions
 ): Promise<string> {
-  const apiKey = requireOpenAiApiKey(options.apiKey);
-  const form = new FormData();
-  const blob = dataUrlToBlob(audio.dataUrl, audio.mimeType);
-
-  form.append("file", blob, audio.name ?? "student-turn.webm");
-  form.append("model", options.transcribeModel);
-  form.append("response_format", "json");
-
-  const payload = await fetchOpenAiJson("https://api.openai.com/v1/audio/transcriptions", {
-    apiKey,
-    body: form,
-    method: "POST"
-  });
-  const text = asString(asRecord(payload).text)?.trim();
-
-  if (!text) {
-    throw new HttpError(502, "OpenAI transcription response did not include text.", payload);
-  }
-
-  return text;
+  // OpenRouter STT takes a JSON body with bare-base64 audio + a required `format` token;
+  // the helper quarantines that wire (see src/providers/openrouter/openrouter-audio.ts).
+  // The success body is OpenAI-shaped `{ text }`, so the empty-text guard stays here.
+  return transcribeViaOpenRouter(audio, { apiKey: options.openRouterApiKey, model: options.transcribeModel });
 }
 
 async function proposeTutorAction(
@@ -721,32 +706,15 @@ async function createTutorSpeech(
   text: string,
   options: VoicePipelineOptions
 ): Promise<VoicePipelineAudioOutput> {
-  const response = await fetch("https://api.openai.com/v1/audio/speech", {
-    body: JSON.stringify({
-      input: text,
-      instructions:
-        "Speak like a calm tutor. Use a warm, patient tone. Keep the delivery concise and leave space for the student to answer.",
-      model: options.ttsModel,
-      voice: options.voice
-    }),
-    headers: {
-      Authorization: `Bearer ${requireOpenAiApiKey(options.apiKey)}`,
-      "Content-Type": "application/json"
-    },
-    method: "POST",
-    signal: AbortSignal.timeout(openAiRequestTimeoutMs)
+  // OpenRouter TTS takes JSON `{ model, input, voice, response_format }` and returns raw
+  // binary audio on 2xx (the helper handles the binary read + the data-URL wrap). Gemini
+  // 3.1 Flash TTS has no style/instructions field, so the tutor delivery direction is
+  // folded into `input` inside the helper.
+  return synthesizeSpeechViaOpenRouter(text, {
+    apiKey: options.openRouterApiKey,
+    model: options.ttsModel,
+    voice: options.voice
   });
-
-  if (!response.ok) {
-    throw new HttpError(response.status, "OpenAI text-to-speech request failed", await fetchOpenAiSpeechError(response));
-  }
-
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  return {
-    dataUrl: `data:${speechMimeType};base64,${bytesToBase64(bytes)}`,
-    mimeType: speechMimeType,
-    size: bytes.byteLength
-  };
 }
 
 function createTutorPrompt(input: TutorTurnInput): string {
@@ -948,59 +916,6 @@ function projectToPublicLesson(
   };
 }
 
-async function fetchOpenAiSpeechError(response: Response): Promise<JsonValue> {
-  // The TTS call reads a binary body on success, so it can't share the JSON-text helper
-  // the reasoning calls use; this is the one place the OpenAI client stays inline. The
-  // error body, though, is JSON text — read it limited so an upstream error page can't
-  // exhaust memory before the HttpError is thrown.
-  const text = await readLimitedResponseText(response, maxOpenAiSpeechErrorBytes);
-
-  if (!text) {
-    return {};
-  }
-
-  try {
-    return JSON.parse(text) as JsonValue;
-  } catch {
-    return { error: text };
-  }
-}
-
-async function readLimitedResponseText(response: Response, maxBytes: number): Promise<string> {
-  const reader = response.body?.getReader();
-
-  if (!reader) {
-    return "";
-  }
-
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-
-    if (done) {
-      break;
-    }
-
-    totalBytes += value.byteLength;
-    if (totalBytes > maxBytes) {
-      throw new HttpError(502, "OpenAI response was too large");
-    }
-
-    chunks.push(value);
-  }
-
-  const bytes = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return new TextDecoder().decode(bytes);
-}
-
 /**
  * Splits a `data:<mime>;base64,<data>` URL into the Flue PromptImage fields the
  * tutor-turn workflow expects (`{ type: 'image', data, mimeType }`). The data URL is the
@@ -1020,44 +935,6 @@ function splitPromptImage(dataUrl: string): JsonValue {
   const first = parts[0] ?? "";
   const mimeType = first.includes("/") ? first : "image/jpeg";
   return { type: "image" as const, data: dataUrl.slice(commaIndex + 1), mimeType };
-}
-
-function dataUrlToBlob(dataUrl: string, fallbackMimeType: string): Blob {
-  const commaIndex = dataUrl.indexOf(",");
-
-  if (!dataUrl.startsWith("data:") || commaIndex < 0) {
-    throw new HttpError(400, "Audio payload must be a base64 data URL.");
-  }
-
-  const metadata = dataUrl.slice("data:".length, commaIndex);
-  const metadataParts = metadata.split(";").filter(Boolean);
-  const isBase64 = metadataParts.some((part) => part.toLowerCase() === "base64");
-
-  if (!isBase64) {
-    throw new HttpError(400, "Audio payload must be a base64 data URL.");
-  }
-
-  const mimeType = metadataParts[0]?.includes("/") ? metadataParts[0] : fallbackMimeType;
-  const binary = atob(dataUrl.slice(commaIndex + 1));
-  const bytes = new Uint8Array(binary.length);
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-
-  return new Blob([bytes], { type: mimeType });
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 0x8000;
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, index + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-
-  return btoa(binary);
 }
 
 function asRecord(value: JsonValue | undefined): Record<string, JsonValue> {

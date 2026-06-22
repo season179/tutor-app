@@ -19,9 +19,9 @@
     "OPENAI_TUTOR_MODEL": "gpt-5.5",
     "OPENAI_GATE_CHECKER_MODEL": "gpt-5.5",
     "OPENAI_VERIFIER_MODEL": "gpt-5.5",
-    "OPENAI_TRANSCRIBE_MODEL": "gpt-4o-transcribe",
-    "OPENAI_TTS_MODEL": "gpt-4o-mini-tts",
-    "OPENAI_TTS_VOICE": "marin",
+    "OPENROUTER_TRANSCRIBE_MODEL": "qwen/qwen3-asr-flash-2026-02-10",
+    "OPENROUTER_TTS_MODEL": "google/gemini-3.1-flash-tts-preview",
+    "OPENROUTER_TTS_VOICE": "Aoede",
     "OPENAI_VISION_MODEL": "gpt-5.5",
     "R2_BUCKET_NAME": "ai-tutor-problem-images",
     "BETTER_AUTH_URL": "https://ai-tutor.dev"
@@ -46,7 +46,7 @@
   ],
   "secrets": {
     "required": [
-      "OPENAI_API_KEY",
+      "OPENROUTER_API_KEY",
       "BETTER_AUTH_SECRET",
       "GOOGLE_CLIENT_ID",
       "GOOGLE_CLIENT_SECRET",

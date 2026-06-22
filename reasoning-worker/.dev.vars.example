@@ -1,9 +1,11 @@
 # Used by `npx flue dev --target cloudflare` (Worker B local dev). Copy to `.dev.vars`.
-# Worker B is a pure model executor; its only runtime concerns are the model specifier
-# (REASONING_MODEL in wrangler.jsonc) and provider API keys.
+# Worker B is a pure model executor; its only runtime concerns are the model specifiers
+# (REASONING_MODEL / TUTOR_MODEL in wrangler.jsonc) and provider API keys.
 #
 # Swapping providers is a one-secret + one-var change here, not a code change — see
-# docs/adr/0001-flue-reasoning-worker.md. For OpenRouter, set OPENROUTER_API_KEY and
-# change REASONING_MODEL to e.g. openrouter/openai/gpt-5.5.
+# docs/adr/0001-flue-reasoning-worker.md. The tutor-turn stage defaults to TUTOR_MODEL
+# (Nemotron via OpenRouter); the other three stages use REASONING_MODEL (OpenAI), so
+# Worker B needs BOTH provider keys live.
 
 OPENAI_API_KEY=your-openai-api-key
+OPENROUTER_API_KEY=your-openrouter-api-key

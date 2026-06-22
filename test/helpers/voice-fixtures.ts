@@ -22,13 +22,16 @@ export const context: RequestContext = {
 // REASONING resolves lazily to whichever fake the test installed, so the same env object
 // works across tests without each one re-wiring the binding. (The binding is the sole
 // reasoning transport now; tests that exercise a reasoning stage must install a fake first.)
+// The audio key/model vars are OpenRouter now (STT/TTS swapped off OpenAI); the OpenAI
+// tutor/gate/verifier vars are vestigial but kept so the env satisfies the type.
 export const voiceServiceEnv: VoicePipelineServiceEnv = {
-  OPENAI_API_KEY: "test-key",
+  OPENROUTER_API_KEY: "test-key",
+  OPENROUTER_TRANSCRIBE_MODEL: undefined,
+  OPENROUTER_TTS_MODEL: undefined,
+  OPENROUTER_TTS_VOICE: undefined,
   OPENAI_GATE_CHECKER_MODEL: undefined,
-  OPENAI_TRANSCRIBE_MODEL: undefined,
-  OPENAI_TTS_MODEL: undefined,
-  OPENAI_TTS_VOICE: undefined,
   OPENAI_TUTOR_MODEL: undefined,
+  OPENAI_VERIFIER_MODEL: undefined,
   get REASONING() {
     return currentReasoningBinding();
   }
