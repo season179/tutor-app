@@ -10,6 +10,7 @@ import {
 } from "./step-verifier.js";
 import type { ComprehensionGateStatus, SessionPhase } from "./tutor-action.js";
 import { runVerifierAgent, type VerifierAgentEnv } from "./verifier-agent.js";
+import type { ProviderSettings } from "../settings/settings-types.js";
 
 export type GradeTurnInput = {
   activeStep: ActiveStep | null;
@@ -43,7 +44,8 @@ export function shouldGradeTurn(
  */
 export async function gradeStudentTurn(
   input: GradeTurnInput,
-  env: VerifierAgentEnv
+  env: VerifierAgentEnv,
+  settings?: ProviderSettings
 ): Promise<StepVerifierVerdict | null> {
   if (!shouldGradeTurn(input.phase, input.gateStatus, input.studentText)) {
     return null;
@@ -80,7 +82,8 @@ export async function gradeStudentTurn(
         question,
         studentText: input.studentText
       },
-      env
+      env,
+      settings
     );
     return llmStepVerdict(verdict);
   } catch (error) {

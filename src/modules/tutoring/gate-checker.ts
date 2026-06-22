@@ -7,6 +7,7 @@ import {
 import type { GateStage } from "./phase-policy.js";
 import { scrubComputedSolutionFromText, type ProblemFrame } from "../problems/problem-frame.js";
 import { isJsonObject } from "../../core/schema-parser.js";
+import { modelExtraForStage, type ProviderSettings } from "../settings/settings-types.js";
 
 // The "comprehension-gate checker" marker stays in the preamble: the voice pipeline and its
 // tests identify a gate-check request by this phrase, distinct from the tutor/verifier calls.
@@ -64,13 +65,7 @@ export type GateCheckerVerdict = {
   notes: string | null;
 };
 
-export type GateCheckerEnv = ReasoningEnv & {
-  // The gate-check model specifier now lives in Worker B's REASONING_MODEL; these OpenAI
-  // model env vars are retained only for the deterministic gating the DO still does and
-  // for back-compat with callers that read them. The model call itself crosses the binding.
-  OPENAI_GATE_CHECKER_MODEL?: string | undefined;
-  OPENAI_TUTOR_MODEL: string | undefined;
-};
+export type GateCheckerEnv = ReasoningEnv;
 
 /**
  * Grades one read of the Three Reads gate. Each stage has its own rubric, but all share the
@@ -80,12 +75,18 @@ export type GateCheckerEnv = ReasoningEnv & {
  * re-validates with `parseGateCheckerVerdict` (enum/trim/null-coalescing domain checks the
  * schema alone doesn't cover). A binding failure propagates as HttpError(502) so a
  * transient Worker B failure kills the turn before commit (the gate is not fail-soft).
+ *
+ * When `settings` is provided, the gate-check stage's model is shipped in the binding
+ * payload (`extra.model`), overriding Worker B's env default for this call; when absent,
+ * Worker B falls back to its env model. The turn path loads the settings snapshot once and
+ * threads it through, so a single settings read covers every reasoning stage in the turn.
  */
 export async function checkGateStage(
   stage: GateStage,
   frame: ProblemFrame,
   studentText: string,
-  env: GateCheckerEnv
+  env: GateCheckerEnv,
+  settings?: ProviderSettings
 ): Promise<GateCheckerVerdict> {
   const trimmed = studentText.trim();
 
@@ -101,7 +102,7 @@ export async function checkGateStage(
     gateStageInstructions(stage),
     gateStageUserContent(stage, frame, trimmed)
   );
-  const result = await runReasoningWorkflow("gate-check", input, env);
+  const result = await runReasoningWorkflow("gate-check", input, env, settings ? modelExtraForStage(settings, "gate-check") : undefined);
 
   try {
     return parseGateCheckerVerdict(result);
@@ -118,9 +119,10 @@ export async function checkGateStage(
 export function checkGateRestatement(
   frame: ProblemFrame,
   studentText: string,
-  env: GateCheckerEnv
+  env: GateCheckerEnv,
+  settings?: ProviderSettings
 ): Promise<GateCheckerVerdict> {
-  return checkGateStage("restatement", frame, studentText, env);
+  return checkGateStage("restatement", frame, studentText, env, settings);
 }
 
 function parseGateCheckerVerdict(value: JsonValue): GateCheckerVerdict {

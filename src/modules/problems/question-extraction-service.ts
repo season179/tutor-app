@@ -11,14 +11,11 @@ import {
   type ProblemType
 } from "./problem-frame.js";
 import type { ExtractionOutcome, ExtractQuestionResponse } from "./problem-context-types.js";
+import { modelExtraForStage, type ProviderSettings } from "../settings/settings-types.js";
 
 const minExtractedQuestionLength = 12;
 
-export type QuestionExtractionServiceEnv = ReasoningEnv & {
-  // The vision model specifier lives in Worker B's REASONING_MODEL. OPENAI_VISION_MODEL is
-  // retained for back-compat with callers that read it.
-  OPENAI_VISION_MODEL: string | undefined;
-};
+export type QuestionExtractionServiceEnv = ReasoningEnv;
 
 const extractionInstructions = `Extract the homework problem *frame* from this image — what is given and what the student must find.
 
@@ -115,17 +112,20 @@ export function normalizeExtractionResponse(
 
 export async function extractQuestionFromImageUrl(
   imageUrl: string,
-  env: QuestionExtractionServiceEnv
+  env: QuestionExtractionServiceEnv,
+  settings?: ProviderSettings
 ): Promise<ExtractQuestionResponse> {
   // The extraction instructions cross as the workflow `input`, the presigned image URL as
-  // `imageUrl` (Worker B fetches the bytes and attaches them as a vision image). A binding
-  // failure propagates as HttpError(502) — extraction is NOT fail-soft (it runs at session
-  // creation, outside the turn loop).
+  // `imageUrl` (Worker B fetches the bytes and attaches them as a vision image). When
+  // `settings` is provided, the extract-question stage's model is shipped in `extra.model`,
+  // overriding Worker B's env default for this call; otherwise Worker B falls back to its
+  // env model. A binding failure propagates as HttpError(502) — extraction is NOT fail-soft
+  // (it runs at session creation, outside the turn loop).
   const result = await runReasoningWorkflow(
     "extract-question",
     extractionInstructions,
     env,
-    { imageUrl }
+    { imageUrl, ...(settings ? modelExtraForStage(settings, "extract-question") : {}) }
   );
 
   try {

@@ -5,7 +5,7 @@ import { installVoiceProviders, type VoiceProviderFake } from "./helpers/fake-vo
 import type { ProblemFrame } from "../src/modules/problems/problem-frame.ts";
 
 function env(fake: VoiceProviderFake | null) {
-  return { OPENAI_TUTOR_MODEL: undefined, OPENAI_VERIFIER_MODEL: undefined, REASONING: fake?.reasoning };
+  return { REASONING: fake?.reasoning };
 }
 
 let fake: VoiceProviderFake | null = null;
@@ -88,7 +88,7 @@ test("runVerifierAgent rejects an out-of-enum verdict", async () => {
   await assert.rejects(
     runVerifierAgent(
       { frame, kind: "step", question: "x", studentText: "y" },
-      { OPENAI_TUTOR_MODEL: undefined, OPENAI_VERIFIER_MODEL: undefined, REASONING: { fetch: fetchImpl } as Fetcher }
+      { REASONING: { fetch: fetchImpl } as Fetcher }
     ),
     /verifier/i
   );

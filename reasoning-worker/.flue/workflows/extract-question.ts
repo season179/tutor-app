@@ -53,6 +53,9 @@ export type ExtractQuestionPayload = {
   // A presigned R2 read URL for the problem image. This workflow fetches the bytes and
   // attaches them as a vision PromptImage.
   imageUrl: string;
+  // Optional per-call model override (`provider/model`). See gate-check.ts for the rationale;
+  // falls back to the agent's env-based model (REASONING_MODEL) when absent.
+  model?: string;
 };
 
 export async function run({ init, payload }: FlueContext<ExtractQuestionPayload>) {
@@ -62,7 +65,8 @@ export async function run({ init, payload }: FlueContext<ExtractQuestionPayload>
 
   const response = await session.prompt(payload.input, {
     result: extractQuestionResult,
-    images: [image]
+    images: [image],
+    ...(payload.model ? { model: payload.model } : {})
   });
 
   return response.data;

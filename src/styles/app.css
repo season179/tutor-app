@@ -2032,3 +2032,173 @@ pre {
     transform: scaleY(0.8);
   }
 }
+
+/* Provider/model settings page */
+
+.settings-page {
+  align-items: center;
+  background: var(--surface-low);
+  block-size: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  inline-size: 100%;
+  overflow-y: auto;
+  padding: 1.8rem 1.2rem 3rem;
+}
+
+.settings-page[aria-busy="true"] {
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-page--centered {
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-not-authorized {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-inline-size: 28rem;
+  padding: 2.4rem 2rem;
+  text-align: center;
+}
+
+.settings-not-authorized h1 {
+  font-size: 1.4rem;
+  font-weight: 820;
+}
+
+.settings-not-authorized p {
+  color: var(--muted);
+  margin-bottom: 0.8rem;
+}
+
+.settings-header {
+  align-items: center;
+  display: flex;
+  inline-size: 100%;
+  justify-content: space-between;
+  margin-inline: auto;
+  max-inline-size: 640px;
+}
+
+.settings-back-link {
+  font-size: 0.88rem;
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  inline-size: 100%;
+  margin-inline: auto;
+  max-inline-size: 640px;
+}
+
+.settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+}
+
+.settings-field-label {
+  font-size: 0.86rem;
+  font-weight: 720;
+}
+
+.settings-field-input {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92rem;
+}
+
+.settings-field-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+/* Provider dropdown + free-text model row */
+.settings-model-row {
+  align-items: stretch;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.settings-provider-select {
+  appearance: none;
+  background: var(--surface-field);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  color: var(--ink);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 0.92rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  min-width: 8rem;
+  padding: 0.78rem 2rem 0.78rem 0.82rem;
+  /* Inline chevron so the dropdown reads as a select across browsers (appearance: none drops it). */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a7a7a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+}
+
+.settings-model-row .settings-field-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.settings-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.8rem;
+}
+
+.settings-save-status {
+  font-size: 0.88rem;
+}
+
+.settings-save-status--ready {
+  color: var(--success);
+}
+
+.settings-save-status--error {
+  color: var(--danger);
+}
+
+.settings-save-status--working {
+  color: var(--muted);
+}
+
+.settings-error {
+  color: var(--danger);
+  inline-size: 100%;
+  margin-inline: auto;
+  max-inline-size: 640px;
+}
+
+/* Sidebar account links (Settings + Sign out) */
+
+.sidebar-account-links {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.sidebar-settings-link,
+.sidebar-signout-link {
+  font-size: 0.8rem;
+}

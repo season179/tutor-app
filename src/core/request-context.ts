@@ -1,6 +1,9 @@
 export type AuthIdentity = {
   email?: string;
   userId: string;
+  // The better-auth admin-plugin role (default "user" — see migrations/0012_user_role.sql).
+  // Surfaced here so server fns can gate on it without a second auth round-trip.
+  role: string;
 };
 
 export type RequestContext = {

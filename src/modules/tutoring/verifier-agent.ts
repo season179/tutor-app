@@ -11,6 +11,7 @@ import {
   type ProblemFrame
 } from "../problems/problem-frame.js";
 import type { StudentAssessmentStatus } from "./tutor-action.js";
+import { modelExtraForStage, type ProviderSettings } from "../settings/settings-types.js";
 
 /** Whether we are grading a single step in the loop or the final framed answer. */
 export type VerifierKind = "step" | "final_answer";
@@ -28,12 +29,7 @@ export type VerifierVerdict = {
   correctionHint: string | null;
 };
 
-export type VerifierAgentEnv = ReasoningEnv & {
-  // The verifier model specifier lives in Worker B's REASONING_MODEL; these OpenAI model
-  // env vars are retained for back-compat with callers that read them.
-  OPENAI_VERIFIER_MODEL?: string | undefined;
-  OPENAI_TUTOR_MODEL: string | undefined;
-};
+export type VerifierAgentEnv = ReasoningEnv;
 
 export type VerifierAgentInput = {
   frame: ProblemFrame;
@@ -98,7 +94,8 @@ function verifierUserContent(input: VerifierAgentInput, safeFrame: ProblemFrame)
  */
 export async function runVerifierAgent(
   input: VerifierAgentInput,
-  env: VerifierAgentEnv
+  env: VerifierAgentEnv,
+  settings?: ProviderSettings
 ): Promise<VerifierVerdict> {
   // Strip any worked solution (numeric-only target, "= 6", "the answer is 6") before the
   // frame reaches the model — defense-in-depth on top of the scrub done at extraction.
@@ -107,7 +104,7 @@ export async function runVerifierAgent(
     verifierInstructions,
     verifierUserContent(input, safeFrame)
   );
-  const result = await runReasoningWorkflow("verifier", composedInput, env);
+  const result = await runReasoningWorkflow("verifier", composedInput, env, settings ? modelExtraForStage(settings, "verifier") : undefined);
 
   try {
     return parseVerifierVerdict(result);

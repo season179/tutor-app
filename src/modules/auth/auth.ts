@@ -1,5 +1,5 @@
 import { betterAuth } from "better-auth";
-import { anonymous } from "better-auth/plugins";
+import { admin, anonymous } from "better-auth/plugins";
 
 /**
  * Environment required to build a better-auth instance at runtime. The Worker
@@ -48,6 +48,11 @@ export function createAuth(env: AuthEnv, options: CreateAuthOptions = {}) {
     // cast preserves that boundary.
     database: env.DB as Parameters<typeof betterAuth>[0]["database"],
     plugins: [
+      // Admin plugin: adds the `role` (default "user") + banned/banReason/banExpires columns
+      // to the user table and `impersonatedBy` to the session table (migration 0012). Gates
+      // the /settings page on `role === "admin"` — see settings-fns.ts + SettingsPage.tsx.
+      // Admin grant is an out-of-migration SQL UPDATE against the owner's own row.
+      admin(),
       anonymous({
         onLinkAccount: async ({ anonymousUser, newUser }) => {
           if (!transferSessions) {

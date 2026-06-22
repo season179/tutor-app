@@ -28,7 +28,7 @@ const openAIPipelineSession: OpenAIVoicePipelineSessionDescriptor = {
     manualReply: true,
     payloadLimitBytes: 8_000_000
   },
-  model: "gpt-5.5",
+  model: "openai/gpt-5.5",
   provider: "openai-voice-pipeline",
   sessionId: "session-123",
   // STT/TTS swapped to OpenRouter; these strings are opaque to the schema (it round-trips,

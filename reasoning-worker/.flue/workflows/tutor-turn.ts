@@ -52,6 +52,11 @@ export type TutorTurnPayload = {
   // student can upload an image mid-turn; it rides alongside the prompt as a vision
   // attachment. Worker A splits the data URL into base64 `data` + `mimeType`.
   image?: PromptImage;
+  // Optional per-call model override (`provider/model`). Worker A ships the tutor stage's
+  // current model from the DB-backed settings; when absent, the agent's env-based model
+  // (TUTOR_MODEL ?? REASONING_MODEL) is used. Keeping the env fallback means Worker B still
+  // runs standalone.
+  model?: string;
 };
 
 export async function run({ init, payload }: FlueContext<TutorTurnPayload>) {
@@ -60,6 +65,7 @@ export async function run({ init, payload }: FlueContext<TutorTurnPayload>) {
 
   const response = await session.prompt(payload.input, {
     result: tutorTurnResult,
+    ...(payload.model ? { model: payload.model } : {}),
     ...(payload.image ? { images: [payload.image] } : {})
   });
 

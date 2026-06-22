@@ -47,6 +47,12 @@ import { isJsonObject } from "../../core/schema-parser.js";
 import { validateTutorAction } from "../tutoring/tutor-action-validator.js";
 import { tutorPolicy } from "../tutoring/tutor-policy.js";
 import {
+  modelExtraForStage,
+  providerModelSpecifier,
+  type ProviderSettings
+} from "../settings/settings-types.js";
+import { loadProviderSettings } from "../settings/settings-loader.js";
+import {
   serializeVoicePipelineTurnResponse,
   parseVoicePipelineTurnRequest
 } from "./voice-session-schema.js";
@@ -62,7 +68,8 @@ import type {
   VoicePreparedImage
 } from "./voice-types.js";
 
-export const defaultTutorModel = "gpt-5.5";
+export const defaultTutorModel = "openai/gpt-5.5";
+// Audio runs ON OpenRouter, but OpenRouter's audio REST endpoints want the bare vendor/model.
 export const defaultTranscribeModel = "qwen/qwen3-asr-flash-2026-02-10";
 export const defaultTtsModel = "google/gemini-3.1-flash-tts-preview";
 // Gemini 3.1 Flash TTS voices are 30 mythological names; "Aoede" is the breezy, clear,
@@ -75,18 +82,11 @@ export const defaultTtsVoice = "Aoede";
 const maxTutorAttempts = 2;
 
 export type VoicePipelineServiceEnv = ReasoningEnv & {
-  // STT/TTS moved to OpenRouter; OPENROUTER_API_KEY is the only audio-provider key Worker A
-  // holds (reasoning crosses the binding). OPENAI_TUTOR_MODEL is still read below for the
-  // session descriptor's `model` field (see createVoicePipelineOptions) — it is NOT used for
-  // any LLM call in Worker A. The other OPENAI_*_MODEL vars are vestigial (reasoning lives in
-  // Worker B) but retained for back-compat with callers that read them.
+  // STT/TTS model selection moved to the DB-backed provider_settings table (loaded per turn
+  // via loadProviderSettings); OPENROUTER_API_KEY is the only audio-provider key Worker A
+  // holds (reasoning crosses the binding). DB holds the per-turn settings snapshot.
   OPENROUTER_API_KEY: string | undefined;
-  OPENROUTER_TRANSCRIBE_MODEL: string | undefined;
-  OPENROUTER_TTS_MODEL: string | undefined;
-  OPENROUTER_TTS_VOICE: string | undefined;
-  OPENAI_GATE_CHECKER_MODEL?: string | undefined;
-  OPENAI_TUTOR_MODEL: string | undefined;
-  OPENAI_VERIFIER_MODEL?: string | undefined;
+  DB: D1Database;
 };
 
 type VoicePipelineOptions = {
@@ -111,13 +111,22 @@ type TutorTurnInput = {
   supportLevel: SupportLevel;
 };
 
-export function createVoicePipelineOptions(env: VoicePipelineServiceEnv): VoicePipelineOptions {
+export function createVoicePipelineOptions(
+  env: VoicePipelineServiceEnv,
+  settings: ProviderSettings
+): VoicePipelineOptions {
   return {
     openRouterApiKey: env.OPENROUTER_API_KEY,
-    transcribeModel: env.OPENROUTER_TRANSCRIBE_MODEL ?? defaultTranscribeModel,
-    ttsModel: env.OPENROUTER_TTS_MODEL ?? defaultTtsModel,
-    tutorModel: env.OPENAI_TUTOR_MODEL ?? defaultTutorModel,
-    voice: env.OPENROUTER_TTS_VOICE ?? defaultTtsVoice
+    // Audio model selection now flows from the DB-backed settings snapshot; the `default*`
+    // constants stay as the floor in case a settings row is somehow absent.
+    transcribeModel: settings.stt_model.model || defaultTranscribeModel,
+    ttsModel: settings.tts_model.model || defaultTtsModel,
+    // The session descriptor's `model` field is purely informational (it advertises the tutor
+    // model to the client); the actual tutor LLM call crosses the binding and is resolved per
+    // stage from settings inside the turn. Seed it from the tutor settings model so the
+    // descriptor reflects what's actually being used.
+    tutorModel: providerModelSpecifier(settings.tutor_model) || defaultTutorModel,
+    voice: settings.tts_voice || defaultTtsVoice
   };
 }
 
@@ -134,13 +143,16 @@ export async function handleVoicePipelineTurnWithStore(
     throw new HttpError(404, "Session not found");
   }
 
-  const options = createVoicePipelineOptions(env);
+  // Load the settings snapshot once per turn — one D1 read covers the audio options and every
+  // reasoning stage (gate/verifier/tutor) the turn may invoke, threaded through below.
+  const settings = await loadProviderSettings(env);
+  const options = createVoicePipelineOptions(env, settings);
 
   // The tutor's opening turn: it speaks first, before the student says anything. Skip the
   // student-text/gate/grader machinery and just produce the first move from the confirmed
   // problem. Branches early because none of the per-student-turn artifacts apply.
   if (request.kickoff) {
-    return handleKickoffTurn(detail, request.sessionId, options, env, store, requestContext.ownerKey);
+    return handleKickoffTurn(detail, request.sessionId, options, env, store, requestContext.ownerKey, settings);
   }
 
   const studentText = await readStudentText(request, options);
@@ -155,7 +167,7 @@ export async function handleVoicePipelineTurnWithStore(
   if (shouldEvaluateGateStage(fromPhase, gateStatus, studentText, problemContext)) {
     gateStageChecked = gateStageForStatus(gateStatus);
     if (gateStageChecked) {
-      gateVerdict = await checkGateStage(gateStageChecked, problemContext, studentText, env);
+      gateVerdict = await checkGateStage(gateStageChecked, problemContext, studentText, env, settings);
       if (gateVerdict.accepted) {
         // Advance exactly one read; only the final restatement flips the gate to complete.
         gateStatus = nextGateStatus(gateStatus);
@@ -177,7 +189,8 @@ export async function handleVoicePipelineTurnWithStore(
       phase: fromPhase,
       studentText
     },
-    env
+    env,
+    settings
   );
 
   const supportLevel = nextSupportLevel(detail.session.supportLevel, checkerVerdict, studentText);
@@ -193,7 +206,8 @@ export async function handleVoicePipelineTurnWithStore(
       studentText,
       supportLevel
     },
-    env
+    env,
+    settings
   );
 
   const audio = await createTutorSpeech(action.spokenUtterance, options);
@@ -325,7 +339,8 @@ async function handleKickoffTurn(
   options: VoicePipelineOptions,
   env: VoicePipelineServiceEnv,
   store: SessionStore,
-  ownerKey: string
+  ownerKey: string,
+  settings: ProviderSettings
 ): Promise<VoicePipelineTurnResponse> {
   const fromPhase = detail.session.currentPhase;
   if (fromPhase !== "session_open") {
@@ -349,7 +364,8 @@ async function handleKickoffTurn(
       studentText: "",
       supportLevel
     },
-    env
+    env,
+    settings
   );
 
   const audio = await createTutorSpeech(action.spokenUtterance, options);
@@ -622,7 +638,8 @@ async function transcribeAudio(
 
 async function proposeTutorAction(
   input: TutorTurnInput,
-  env: VoicePipelineServiceEnv
+  env: VoicePipelineServiceEnv,
+  settings: ProviderSettings
 ): Promise<ProposedTutorAction> {
   const phase = input.detail.session.currentPhase;
   const gateStatus = input.gateStatus;
@@ -636,7 +653,7 @@ async function proposeTutorAction(
       rejectionReasons,
       input.kickoff ?? false
     );
-    const payload = await proposeTutorActionViaBinding(input, instructions, env);
+    const payload = await proposeTutorActionViaBinding(input, instructions, env, settings);
     const outputText = extractOutputText(payload);
 
     if (!outputText) {
@@ -692,10 +709,11 @@ async function proposeTutorAction(
 async function proposeTutorActionViaBinding(
   input: TutorTurnInput,
   instructions: string,
-  env: VoicePipelineServiceEnv
+  env: VoicePipelineServiceEnv,
+  settings: ProviderSettings
 ): Promise<JsonValue> {
   const composedInput = composeReasoningInput(instructions, createTutorPrompt(input));
-  const extra: Record<string, JsonValue> = {};
+  const extra: Record<string, JsonValue> = { ...modelExtraForStage(settings, "tutor-turn") };
   if (input.image) {
     extra.image = splitPromptImage(input.image.dataUrl);
   }

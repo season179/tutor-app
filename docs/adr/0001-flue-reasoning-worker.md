@@ -66,6 +66,18 @@ This preserves what the model *sees* (the same words, same order) while routing 
 through the input channel rather than a system/user split. B therefore stays a pure model
 executor with zero stage-specific knowledge — exactly the boundary the plan §3 requires.
 
+**Per-call model override (added with DB-backed settings).** The same `session.prompt()`
+options bag accepts a `model` field. The DB-backed `provider_settings` table (editable from
+`/settings`) stores model rows as split `provider` + bare model `value`; Worker A recomposes
+those split rows into the `provider/model` specifier Flue/Pi expects and ships that as
+`payload.model`. Each workflow forwards it:
+`session.prompt(input, { result, ...(payload.model ? { model: payload.model } : {}) })`.
+When `payload.model` is absent, the workflow's `createAgent(() => ({ model }))` env specifier
+(`REASONING_MODEL` / `TUTOR_MODEL`) is the fallback — so Worker B still runs standalone and
+serves as the floor if Worker A ever omits the field. The model selection is now DB-driven;
+the provider credentials stay Wrangler secrets (one `OPENAI_API_KEY` + one
+`OPENROUTER_API_KEY` on Worker B).
+
 The valibot `result` schema is the single structured-output contract shared across the
 binding and **replaces the current strict JSON-schema request shape on B's side**; A's
 domain parsers (`parseGateCheckerVerdict` / `proposedTutorActionFromJson` /
@@ -86,7 +98,9 @@ against that lighter alternative. The cost is accepted for the harness future.
 - STT/TTS remain direct OpenAI calls in Worker A (Flue is LLM-only); swapping audio
   providers is a separate, non-Flue effort. **(Resolved: STT/TTS were swapped to OpenRouter
   in `feat/openrouter-audio-swap`; Worker A now holds `OPENROUTER_API_KEY`, not an OpenAI
-  key, and the OpenRouter audio wire lives in `src/providers/openrouter/openrouter-audio.ts`.)**
+  key, the OpenRouter audio wire lives in `src/providers/openrouter/openrouter-audio.ts`,
+  and the settings table stores the OpenRouter provider separately so audio sends bare
+  `vendor/model` values.)**
 - Durable Flue workflow resumption, streaming + structured-output tension, and
   tool-using tutor are future Flue capabilities this choice unlocks but this migration
   does not deliver.

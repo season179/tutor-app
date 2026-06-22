@@ -21,8 +21,9 @@ import {
   type ProblemImageStoreEnv
 } from "./problem-image-store.js";
 import { extractQuestionFromImageUrl, type QuestionExtractionServiceEnv } from "./question-extraction-service.js";
+import { loadProviderSettings } from "../settings/settings-loader.js";
 
-export type ProblemContextHandlerEnv = ProblemImageStoreEnv & QuestionExtractionServiceEnv;
+export type ProblemContextHandlerEnv = ProblemImageStoreEnv & QuestionExtractionServiceEnv & { DB: D1Database };
 
 export async function handleUploadUrlRequest(
   body: unknown,
@@ -61,7 +62,10 @@ export async function handleExtractQuestionRequest(
   await assertProblemImageExists(env, request.objectKey);
 
   const readUrl = await createProblemImageReadUrl(env, request.objectKey);
-  const extraction = await extractQuestionFromImageUrl(readUrl.url, env);
+  // Load the settings snapshot once for the extraction call so the extract-question stage's
+  // model is shipped from the DB rather than Worker B's env default.
+  const settings = await loadProviderSettings(env);
+  const extraction = await extractQuestionFromImageUrl(readUrl.url, env, settings);
 
   await store.saveProblemContext(context.ownerKey, {
     extractionConfidence: extraction.confidence,
@@ -120,7 +124,7 @@ export async function handlePreviewUrlRequest(
 
 export function createProblemContextHandlerEnv(source: ProblemContextHandlerEnv): ProblemContextHandlerEnv {
   return {
-    OPENAI_VISION_MODEL: source.OPENAI_VISION_MODEL,
+    DB: source.DB,
     R2_ACCESS_KEY_ID: source.R2_ACCESS_KEY_ID,
     R2_ACCOUNT_ID: source.R2_ACCOUNT_ID,
     R2_BUCKET_NAME: source.R2_BUCKET_NAME,

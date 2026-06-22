@@ -1,4 +1,5 @@
 import type { TutorSessionStatus, TutorSessionSummary } from "../../modules/sessions/session-types.js";
+import { Link } from "@tanstack/react-router";
 import { ActionButton } from "./ActionButton.js";
 import { classNames } from "../lib/class-names.js";
 import { formatRelativeTime } from "../lib/format-relative-time.js";
@@ -20,6 +21,8 @@ type SidebarProps = {
   onToggleCollapsed: () => void;
   sessions: TutorSessionSummary[];
   userEmail?: string;
+  // Only admins see the Settings link (the /settings page is admin-gated server-side too).
+  isAdmin?: boolean;
 };
 
 function statusTone(status: TutorSessionStatus): string {
@@ -48,6 +51,7 @@ export function Sidebar({
   error,
   isAnonymous = false,
   isDisabled = false,
+  isAdmin = false,
   isLoading,
   onCreate,
   onRetry,
@@ -202,9 +206,16 @@ export function Sidebar({
         ) : (
           <div className="sidebar-account">
             {userEmail ? <span className="sidebar-account-email" title={userEmail}>{userEmail}</span> : null}
-            <button className="text-button sidebar-signout-link" onClick={onSignOut} type="button">
-              Sign out
-            </button>
+            <div className="sidebar-account-links">
+              {isAdmin ? (
+                <Link className="text-button sidebar-settings-link" to="/settings">
+                  Settings
+                </Link>
+              ) : null}
+              <button className="text-button sidebar-signout-link" onClick={onSignOut} type="button">
+                Sign out
+              </button>
+            </div>
           </div>
         )}
       </div>

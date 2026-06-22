@@ -46,6 +46,9 @@ export async function authenticateServerRequest(): Promise<AuthenticatedServerRe
   const userId = session.user.id;
   const identity: AuthIdentity = {
     userId,
+    // The admin plugin populates `role` on the session user (default "user"); fall back to
+    // "user" defensively if the field is ever absent so the admin gate fails closed.
+    role: (session.user as { role?: string }).role ?? "user",
     ...(session.user.email ? { email: session.user.email } : {})
   };
 

@@ -23,15 +23,8 @@ BETTER_AUTH_URL=https://ai-tutor.dev
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
-# Voice / model defaults (optional — fall back to wrangler.jsonc vars).
-# STT/TTS run on OpenRouter; the tutor/gate/verifier/vision model vars are vestigial here
-# (reasoning lives in Worker B — see reasoning-worker/.dev.vars), kept for back-compat.
-OPENAI_TUTOR_MODEL=gpt-5.5
-OPENAI_VERIFIER_MODEL=gpt-5.5
-OPENROUTER_TRANSCRIBE_MODEL=qwen/qwen3-asr-flash-2026-02-10
-OPENROUTER_TTS_MODEL=google/gemini-3.1-flash-tts-preview
-OPENROUTER_TTS_VOICE=Aoede
-OPENAI_VISION_MODEL=gpt-5.5
+# Provider/model selection now lives in the DB (provider_settings table, editable from
+# /settings) — these vars were removed. Defaults seed from migrations/0011_provider_settings.sql.
 
 # R2 direct-upload credentials (Cloudflare dashboard → R2 → Manage API tokens)
 R2_ACCESS_KEY_ID=your-r2-access-key-id

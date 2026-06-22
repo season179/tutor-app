@@ -15,12 +15,29 @@ holds is `OPENROUTER_API_KEY`.
 
 - **Worker A** (`wrangler.jsonc`, `src/`, pnpm): the front door. Owns all domain logic —
   scrubbing, the re-ask loop, the deterministic verifier track, phase logic, `commitTurn`,
-  STT, TTS. Calls the binding via `src/providers/reasoning/reasoning-binding.ts`.
+  STT, TTS. Calls the binding via `src/providers/reasoning/reasoning-binding.ts`. Owns the
+  DB-backed provider/model settings (`src/modules/settings/`) and ships each stage's model
+  across the binding as `payload.model`.
 - **Worker B** (`reasoning-worker/`, npm): Flue-generated, sources in `reasoning-worker/.flue/`.
-  A pure model executor — holds no stage prompt; the gate-check / verifier / extract-question
-  stages use `process.env.REASONING_MODEL`, and the tutor-turn stage uses
-  `process.env.TUTOR_MODEL ?? REASONING_MODEL` (both `provider/model` strings, so swapping a
-  stage is a one-var + secret change).
+  A pure model executor — holds no stage prompt. Each workflow forwards the per-call
+  `payload.model` into `session.prompt({ model })`; when that field is absent, the
+  `createAgent` env specifier is the fallback (`REASONING_MODEL` for gate-check / verifier /
+  extract-question, `TUTOR_MODEL ?? REASONING_MODEL` for tutor-turn). In production Worker A
+  always ships the model from the `provider_settings` table; the env vars are the floor.
+
+### Provider/model settings (DB-backed)
+STT, TTS, and the four reasoning-stage models live in the `provider_settings` keyed-rows
+table (`migrations/0011_provider_settings.sql` + `0014_provider_settings_provider_column.sql`),
+NOT env vars — editable from the `/settings` page
+(`src/client/components/settings/SettingsPage.tsx`) so models can be swapped and tested
+without a redeploy. Model rows store `provider` separately from the bare `value`: Worker A
+passes bare `value` to OpenRouter audio, and recomposes `provider/value` only for Flue/Pi
+reasoning via `modelExtraForStage(settings, stage)`. Worker A reads the snapshot once per
+turn/extraction via `loadProviderSettings(env)` (`src/modules/settings/settings-loader.ts`)
+and threads it through `createVoicePipelineOptions` (STT/TTS) and `modelExtraForStage`
+(reasoning → binding payload). Adding a slot is a new row + a `SettingType` union member +
+a `SETTING_FIELDS` entry — never a schema migration. The provider *credentials* stay
+Wrangler secrets (never the DB).
 
 ### Two-worker local dev
 Every reasoning stage needs Worker B up: if `env.REASONING` has no local target, the binding
@@ -50,12 +67,14 @@ cd reasoning-worker && npm run deploy          # flue build --target cloudflare 
 pnpm deploy
 ```
 
-Secret rotation touches BOTH workers, with DIFFERENT keys per worker:
+Secret rotation touches BOTH workers, with DIFFERENT keys per worker. Only *credentials*
+rotate as secrets — model provider/value settings live in the `provider_settings` DB table
+(see above):
 - **Worker A** holds `OPENROUTER_API_KEY` (STT/TTS) — set with `pnpm wrangler secret put
   OPENROUTER_API_KEY`.
-- **Worker B** reads BOTH `OPENAI_API_KEY` (REASONING_MODEL default) and `OPENROUTER_API_KEY`
-  (when TUTOR_MODEL points at an OpenRouter model) — set each with
-  `cd reasoning-worker && npx wrangler secret put <KEY>`.
+- **Worker B** reads BOTH `OPENAI_API_KEY` (when the gate/verifier/extract model points at
+  an OpenAI model) and `OPENROUTER_API_KEY` (when the tutor model points at an OpenRouter
+  model) — set each with `cd reasoning-worker && npx wrangler secret put <KEY>`.
 
 ### Tests
 The voice-pipeline test harness (`test/helpers/fake-voice-providers.ts`) is transport-aware:

@@ -11,6 +11,8 @@ import type { RequestContext } from "../../src/core/request-context.js";
 import { MemorySessionStore } from "../../src/modules/sessions/memory-session-store.js";
 import type { ProblemFrame } from "../../src/modules/problems/problem-frame.js";
 import { currentReasoningBinding } from "./fake-voice-providers.js";
+import { defaultProviderSettings } from "../../src/modules/settings/settings-store.js";
+import type { ProviderSettings } from "../../src/modules/settings/settings-types.js";
 
 export const ownerKey = "access:test-user";
 
@@ -19,19 +21,51 @@ export const context: RequestContext = {
   ownerKey
 };
 
+/**
+ * A D1Database stub that serves ONLY the provider_settings read the turn/extraction paths
+ * make via `loadProviderSettings`. The vitest pool deliberately doesn't spin up a real D1
+ * (see vitest.config.ts), so the turn path — which now reads settings per turn — needs a
+ * stand-in. `prepare().all()` returns the seeded snapshot rows; `batch()` is a no-op for the
+ * (never-written) test path. This mirrors how `MemorySessionStore` stands in for the real
+ * D1SessionStore in the same suite.
+ *
+ * Keep this minimal: it exists to feed `getAllSettings`, nothing else.
+ */
+function makeSettingsD1Stub(snapshot: ProviderSettings = defaultProviderSettings): D1Database {
+  const rows = Object.entries(snapshot).map(([type, value]) =>
+    typeof value === "string"
+      ? { type, provider: null, value }
+      : { type, provider: value.provider, value: value.model }
+  );
+  const fakePrepare = (query: string): D1PreparedStatement => ({
+    bind: () => fakePrepare(query),
+    first: async () => undefined,
+    all: async () =>
+      query.includes("provider_settings")
+        ? ({ results: rows, success: true, meta: {} } as D1Result)
+        : ({ results: [], success: true, meta: {} } as D1Result),
+    run: async () => ({ success: true, meta: {} } as D1Result),
+    raw: async () => []
+  });
+  return {
+    prepare: fakePrepare,
+    batch: async (statements) => statements.map(() => ({ success: true, meta: {} } as D1Result)),
+    exec: async () => ({ count: 0, duration: 0 } as D1ExecResult),
+    withDatabase: () => null as unknown as D1Database
+  } as unknown as D1Database;
+}
+
+export const settingsD1Stub = makeSettingsD1Stub();
+
 // REASONING resolves lazily to whichever fake the test installed, so the same env object
 // works across tests without each one re-wiring the binding. (The binding is the sole
 // reasoning transport now; tests that exercise a reasoning stage must install a fake first.)
-// The audio key/model vars are OpenRouter now (STT/TTS swapped off OpenAI); the OpenAI
-// tutor/gate/verifier vars are vestigial but kept so the env satisfies the type.
+// The audio key is OpenRouter (STT/TTS swapped off OpenAI); the OpenAI tutor/gate/verifier
+// vars are vestigial but kept so the env satisfies the type. DB is the settings stub above —
+// the turn path reads the provider/model snapshot from it per turn.
 export const voiceServiceEnv: VoicePipelineServiceEnv = {
   OPENROUTER_API_KEY: "test-key",
-  OPENROUTER_TRANSCRIBE_MODEL: undefined,
-  OPENROUTER_TTS_MODEL: undefined,
-  OPENROUTER_TTS_VOICE: undefined,
-  OPENAI_GATE_CHECKER_MODEL: undefined,
-  OPENAI_TUTOR_MODEL: undefined,
-  OPENAI_VERIFIER_MODEL: undefined,
+  DB: settingsD1Stub,
   get REASONING() {
     return currentReasoningBinding();
   }

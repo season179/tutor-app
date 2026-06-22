@@ -5,10 +5,10 @@ import {
   createVoicePipelineOptions,
   type VoicePipelineServiceEnv
 } from "./voice-pipeline-service.js";
+import { loadProviderSettings } from "../settings/settings-loader.js";
 import type {
   CreateVoiceSessionRequest,
-  OpenAIVoicePipelineSessionDescriptor,
-  VoiceSessionDescriptor
+  OpenAIVoicePipelineSessionDescriptor
 } from "./voice-types.js";
 import { maxVoiceTurnBodyBytes, voiceBackend } from "./voice-types.js";
 
@@ -18,7 +18,7 @@ export type VoiceSessionContext = {
 };
 
 export type VoiceSessionService = {
-  createSession(request: CreateVoiceSessionRequest, context?: VoiceSessionContext): Promise<VoiceSessionDescriptor>;
+  createSession(request: CreateVoiceSessionRequest, context?: VoiceSessionContext): Promise<OpenAIVoicePipelineSessionDescriptor>;
 };
 
 // The voice session service env is now just the pipeline env: the realtime-only
@@ -34,9 +34,14 @@ export const defaultVoiceBackend = voiceBackend;
  * backend, so there is no switch to read or validate — `createVoiceSessionService`
  * always returns the pipeline service. (The old `VOICE_BACKEND` var and its
  * `readVoiceBackend` validation were retired with the realtime/LiveKit arms.)
+ *
+ * Now async: it loads the provider/model settings snapshot from D1 so the session
+ * descriptor (which advertises the models to the client) reflects the current
+ * settings rather than env defaults.
  */
-export function createVoiceSessionService(env: VoiceSessionServiceEnv): VoiceSessionService {
-  return new OpenAIVoicePipelineSessionService(createVoicePipelineOptions(env));
+export async function createVoiceSessionService(env: VoiceSessionServiceEnv): Promise<VoiceSessionService> {
+  const settings = await loadProviderSettings(env);
+  return new OpenAIVoicePipelineSessionService(createVoicePipelineOptions(env, settings));
 }
 
 class OpenAIVoicePipelineSessionService implements VoiceSessionService {

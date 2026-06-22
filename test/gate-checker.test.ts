@@ -23,7 +23,7 @@ const frame = {
 // carrying the gateChecker slot. The env reads the binding off the installed fake.
 let fake: VoiceProviderFake | null = null;
 function env() {
-  return { OPENAI_GATE_CHECKER_MODEL: undefined, OPENAI_TUTOR_MODEL: undefined, REASONING: fake?.reasoning };
+  return { REASONING: fake?.reasoning };
 }
 afterEach(() => {
   fake?.restore();

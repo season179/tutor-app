@@ -61,7 +61,6 @@ test("extractQuestionFromImageUrl routes through the binding with the flag on an
   const calls: FetchCall[] = [];
   const binding = makeBindingFake(fullExtractionPayload, calls);
   const env = {
-    OPENAI_VISION_MODEL: "gpt-5.5",
     REASONING: binding
   };
 
@@ -89,7 +88,6 @@ test("extractQuestionFromImageUrl degrades an out-of-enum problemType to \"other
   const calls: FetchCall[] = [];
   const binding = makeBindingFake({ ...fullExtractionPayload, problemType: "word problem" }, calls);
   const env = {
-    OPENAI_VISION_MODEL: "gpt-5.5",
     REASONING: binding
   };
 
@@ -111,7 +109,6 @@ test("extractQuestionFromImageUrl maps a binding failure to HttpError(502)", asy
   }) as Fetcher["fetch"];
 
   const env = {
-    OPENAI_VISION_MODEL: "gpt-5.5",
     REASONING: { fetch: fetchImpl } as Fetcher
   };
 
@@ -140,7 +137,6 @@ test("extractQuestionFromImageUrl uses the binding by default (the flag is gone)
   // Silence the fail-safe log (extraction is not fail-soft, but this test exercises the
   // happy path; kept for parity with the binding-failure test above).
   const env = {
-    OPENAI_VISION_MODEL: "gpt-5.5",
     REASONING: { fetch: fetchImpl } as Fetcher
   };
 

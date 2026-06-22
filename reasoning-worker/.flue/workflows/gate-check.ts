@@ -36,6 +36,10 @@ export const gateCheckResult = v.object({
 export type GateCheckPayload = {
   // The complete scrubbed gate-check prompt Worker A assembled (rubric + frame + text).
   input: string;
+  // Optional per-call model override (`provider/model` string). Worker A ships the stage's
+  // current model from the DB-backed settings; when absent, the agent's env-based model
+  // (REASONING_MODEL) is used. Keeping the env fallback means Worker B still runs standalone.
+  model?: string;
 };
 
 export async function run({ init, payload }: FlueContext<GateCheckPayload>) {
@@ -43,7 +47,8 @@ export async function run({ init, payload }: FlueContext<GateCheckPayload>) {
   const session = await harness.session();
 
   const { data } = await session.prompt(payload.input, {
-    result: gateCheckResult
+    result: gateCheckResult,
+    ...(payload.model ? { model: payload.model } : {})
   });
 
   return data;

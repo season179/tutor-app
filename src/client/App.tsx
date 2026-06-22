@@ -22,7 +22,7 @@ import type { LoadedSessionContext, StatusTone } from "./types.js";
 import { hasPriorActivity, rightSidebarCollapsedStorageKey } from "./types.js";
 
 export function App() {
-  const { authError, isAnonymous, isAuthLoading, signInWithGoogle, signOut, userEmail, userId } =
+  const { authError, isAnonymous, isAdmin, isAuthLoading, signInWithGoogle, signOut, userEmail, userId } =
     useAuth();
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -178,6 +178,7 @@ export function App() {
         collapsed={sidebarCollapsed}
         error={tutorSessions.listError}
         isAnonymous={isAnonymous}
+        isAdmin={isAdmin}
         isDisabled={tutorSessions.isSwitching || isRunning}
         isLoading={tutorSessions.isLoading || tutorSessions.isHydrating}
         onCreate={() => {

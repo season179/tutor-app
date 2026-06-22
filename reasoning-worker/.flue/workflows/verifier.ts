@@ -40,6 +40,9 @@ export const verifierResult = v.object({
 export type VerifierPayload = {
   // The complete scrubbed verifier prompt Worker A assembled (instructions + frame + text).
   input: string;
+  // Optional per-call model override (`provider/model`). See gate-check.ts for the rationale;
+  // falls back to the agent's env-based model (REASONING_MODEL) when absent.
+  model?: string;
 };
 
 export async function run({ init, payload }: FlueContext<VerifierPayload>) {
@@ -47,7 +50,8 @@ export async function run({ init, payload }: FlueContext<VerifierPayload>) {
   const session = await harness.session();
 
   const { data } = await session.prompt(payload.input, {
-    result: verifierResult
+    result: verifierResult,
+    ...(payload.model ? { model: payload.model } : {})
   });
 
   return data;

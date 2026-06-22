@@ -48,7 +48,7 @@ export async function createVoiceSessionWithStore(
     sessionId: request.sessionId
   };
 
-  const voiceSessionService = createVoiceSessionService(env);
+  const voiceSessionService = await createVoiceSessionService(env);
   const descriptor = await voiceSessionService.createSession(request, voiceContext);
   await store.updateSession(requestContext.ownerKey, request.sessionId, { status: "active" });
 

@@ -8,8 +8,6 @@ import type { ProblemFrame } from "../src/modules/problems/problem-frame.ts";
 let fake: VoiceProviderFake | null = null;
 function env() {
   return {
-    OPENAI_TUTOR_MODEL: undefined,
-    OPENAI_VERIFIER_MODEL: undefined,
     REASONING: fake?.reasoning
   };
 }

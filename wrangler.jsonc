@@ -16,13 +16,10 @@
     }
   ],
   "vars": {
-    "OPENAI_TUTOR_MODEL": "gpt-5.5",
-    "OPENAI_GATE_CHECKER_MODEL": "gpt-5.5",
-    "OPENAI_VERIFIER_MODEL": "gpt-5.5",
-    "OPENROUTER_TRANSCRIBE_MODEL": "qwen/qwen3-asr-flash-2026-02-10",
-    "OPENROUTER_TTS_MODEL": "google/gemini-3.1-flash-tts-preview",
-    "OPENROUTER_TTS_VOICE": "Aoede",
-    "OPENAI_VISION_MODEL": "gpt-5.5",
+    // Provider/model selection moved to the DB-backed provider_settings table (editable
+    // from /settings); only non-model config stays here. The OPENAI_*_MODEL /
+    // OPENROUTER_*_MODEL vars that used to hold the model strings were removed with that
+    // migration — the defaults live in the migration seed (0011_provider_settings.sql).
     "R2_BUCKET_NAME": "ai-tutor-problem-images",
     "BETTER_AUTH_URL": "https://ai-tutor.dev"
   },

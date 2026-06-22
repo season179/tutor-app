@@ -9,6 +9,8 @@ export type AuthUser = {
   id: string;
   isAnonymous?: boolean;
   name?: string;
+  // The better-auth admin-plugin role (default "user"); surfaced for the /settings gate.
+  role?: string;
 };
 
 export type AuthBootstrapState = "idle" | "bootstrapping" | "ready" | "error";
@@ -21,6 +23,8 @@ export function useAuth() {
 
   const user = session?.user as AuthUser | undefined;
   const isAnonymous = Boolean(user?.isAnonymous);
+  const role = user?.role ?? "user";
+  const isAdmin = role === "admin";
 
   // better-auth's `useSession` is the reactive source; the three imperative
   // actions go through mutations so their in-flight/error state is managed by
@@ -85,6 +89,8 @@ export function useAuth() {
   return {
     authError: bootstrapState === "error",
     isAnonymous,
+    isAdmin,
+    role,
     isAuthLoading,
     signInWithGoogle,
     signOut,

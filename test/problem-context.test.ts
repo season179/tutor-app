@@ -14,6 +14,7 @@ import {
   normalizeExtractionResponse
 } from "../src/modules/problems/question-extraction-service.ts";
 import type { RequestContext } from "../src/core/request-context.ts";
+import { settingsD1Stub } from "./helpers/voice-fixtures.ts";
 
 const ownerKey = "user-a";
 const context: RequestContext = {
@@ -22,9 +23,10 @@ const context: RequestContext = {
 };
 
 // Extraction now crosses the REASONING binding; each test installs a binding fake and
-// threads it onto r2Env via withBinding(). R2 credentials stay for presigning.
+// threads it onto r2Env via withBinding(). R2 credentials stay for presigning. DB is the
+// settings stub the extraction path reads the model snapshot from.
 const r2BaseEnv = {
-  OPENAI_VISION_MODEL: "gpt-5.5",
+  DB: settingsD1Stub,
   R2_ACCESS_KEY_ID: "test-access-key",
   R2_ACCOUNT_ID: "test-account",
   R2_BUCKET_NAME: "ai-tutor-problem-images",
