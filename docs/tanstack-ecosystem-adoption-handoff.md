@@ -418,3 +418,47 @@ After each phase, write a short note in the PR or commit body:
 - What behavior was intentionally left unchanged.
 - Commands run.
 - Browser QA performed.
+
+## Progress (implementation log)
+
+Updated 2026-06-23. Each adopted phase is its own commit on `main` (ahead of
+`origin/main` until pushed). All phases ran `git diff --check`, `CI=true pnpm test`
+(263 passing), and `CI=true pnpm build` (typecheck + vite build) green, plus
+`agent-browser` QA against `vite dev` on `127.0.0.1` (portless was bypassed for
+QA because agent-browser resolves `ai-tutor.dev` to the public site, not the
+local portless proxy).
+
+- **Phase 1 — Pacer: DONE.** `badc352`. Trace Refresh throttled (leading, 500ms,
+  no trailing); `finishAudioTurn` throttled (leading, 1000ms) so a double-tap
+  can't start a duplicate voice turn. QA: 4x rapid Refresh burst → no console
+  errors, traces loaded; home composer intact.
+- **Phase 2 — Form for `/settings`: DONE.** `29ad657`. Draft/dirty/patch moved to
+  TanStack Form (`form.Subscribe` for reactive `values`/`isDirty`); patch validated
+  client-side with the existing `providerSettingsPatchSchema` (one schema, no
+  drift). QA (local admin session in local D1 sandbox): load, reactive dirty
+  gating, save writes only the edited key (verified in `provider_settings`),
+  value survives reload, back-nav, non-admin still "Not authorized".
+- **Phase 3 — Devtools: DONE.** `97f8e2e`. Unified panel mounted dev-only from the
+  root shell via a dynamic `import()` gated on `import.meta.env.DEV` (auto-detects
+  Router/Query/Form/Pacer; no plugins, no event-bus). Verified the prod **client**
+  bundle contains no `@tanstack/react-devtools` and the worker bundle size is
+  unchanged; dev shows the panel collapsed (does not cover the composer).
+- **Phase 4 — Virtual: SKIPPED (per its own stop condition).** The local trace
+  buffer held ~44 runs (446 events) — far below the 500-run threshold the success
+  criteria target. Virtualizing 44 rows would add scroll-container/row-measuring/
+  selection-sync complexity for no perceptible gain. Revisit only when the local
+  trace list actually grows large in real use.
+- **Phase 5 — Hotkeys: DONE.** `945c5a1`. `useLocalHotkeys` on the tutor screen:
+  `m` mic toggle, `/` focus composer, `g t` traces, `g s` settings. All use
+  `ignoreInputs: true` (typing never interrupted); navigation is two-key sequences
+  so a stray key can't navigate. Scoped to `/` (unregister on unmount). QA:
+  `/` focuses composer; `m` ignored while typing (no session started); `g t`/`g s`
+  navigate; nothing fires on `/settings`.
+- **Phase 6 — DB spike: PENDING.** Intentionally a separate-branch spike, not a
+  main adoption. `@tanstack/react-db` is 0.1.87 (very alpha). The spike must
+  answer the five questions and is expected to conclude "do not adopt yet" if the
+  only win is "more TanStack" or it fights the existing Query usage.
+- **Phase 7 — Deeper AI: PENDING.** Research-only with hard guardrails (no Code
+  Mode, no arbitrary tools, keep `phase-policy`/`tutor-action-validator`/verifier).
+
+Next up is Phase 6 on a fresh spike branch.
