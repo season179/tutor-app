@@ -12,6 +12,7 @@ import { StatusBadge } from "./components/StatusBadge.js";
 import { useAuth } from "./hooks/use-auth.js";
 import { useEventLog } from "./hooks/use-event-log.js";
 import { useLiveSession } from "./hooks/use-live-session.js";
+import { useLocalHotkeys } from "./hooks/use-local-hotkeys.js";
 import { useProblemContextStep1 } from "./hooks/use-problem-context-step1.js";
 import { useSidebarCollapsed } from "./hooks/use-sidebar-collapsed.js";
 import { useTutorSessions } from "./hooks/use-tutor-sessions.js";
@@ -153,6 +154,20 @@ export function App() {
         setStatus(errorMessage(error, "Unexpected error."), "error");
       });
   };
+
+  // Local power-user keyboard shortcuts (mic toggle, focus composer, navigate to
+  // traces/settings). Registered after the handlers they call and before the early
+  // returns; useHotkey unregisters on unmount, so they only live while `/` is mounted.
+  useLocalHotkeys({
+    canRecordAudioTurn,
+    isRecording,
+    isRunning,
+    onStart: handleStart,
+    onStartAudioTurn: startAudioTurn,
+    onFinishAudioTurn: () => {
+      void finishAudioTurn();
+    }
+  });
 
   if (isAuthLoading) {
     return <main className="workspace" aria-busy="true" />;
