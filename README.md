@@ -6,7 +6,7 @@ Small TypeScript voice homework coach for turn-controlled tutoring. A student sh
 
 - Node.js 24
 - pnpm 11
-- An OpenRouter API key
+- OpenRouter and OpenAI API keys
 - Google OAuth credentials (for sign-in)
 
 This repo pins `pnpm@11.6.0` in `package.json` and includes `.node-version` / `.nvmrc` with Node 24. Local dev runs behind [Portless](https://portless.sh), which gives the app a stable `https://ai-tutor.dev` URL.
@@ -20,7 +20,7 @@ pnpm install
 cp .dev.vars.example .dev.vars
 ```
 
-Set `OPENROUTER_API_KEY` and the better-auth / Google OAuth values in `.dev.vars` (see [Authentication](#authentication)). Then do the one-time Portless setup:
+Set `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, and the better-auth / Google OAuth values in `.dev.vars` (see [Authentication](#authentication)). Then do the one-time Portless setup:
 
 ```bash
 pnpm portless proxy start --tld dev   # set + persist the .dev TLD
@@ -43,6 +43,7 @@ For production, set the secrets with:
 
 ```bash
 pnpm wrangler secret put OPENROUTER_API_KEY
+pnpm wrangler secret put OPENAI_API_KEY
 pnpm wrangler secret put BETTER_AUTH_SECRET
 pnpm wrangler secret put GOOGLE_CLIENT_ID
 pnpm wrangler secret put GOOGLE_CLIENT_SECRET

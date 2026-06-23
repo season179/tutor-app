@@ -11,7 +11,10 @@
 #   2. pnpm portless proxy stop && pnpm dev            # restart proxy so .dev takes effect
 #   3. pnpm portless trust && pnpm portless hosts sync # trust local CA + map ai-tutor.dev -> 127.0.0.1
 
+# OpenRouter powers STT/TTS and any OpenRouter-selected reasoning model.
 OPENROUTER_API_KEY=your-openrouter-api-key
+# OpenAI powers the default gate/verifier/extract reasoning models.
+OPENAI_API_KEY=your-openai-api-key
 
 # better-auth (generate a secret: `openssl rand -base64 32`)
 BETTER_AUTH_SECRET=your-better-auth-secret
