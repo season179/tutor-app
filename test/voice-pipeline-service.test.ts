@@ -15,6 +15,7 @@
 
 import assert from "node:assert/strict";
 
+import { createObservabilityContext } from "../src/core/observability.ts";
 import { MemorySessionStore } from "../src/modules/sessions/memory-session-store.ts";
 import { handleVoicePipelineTurnWithStore } from "../src/modules/voice/voice-pipeline-service.ts";
 import { installVoiceProviders, type VoiceProviderFake } from "./helpers/fake-voice-providers.ts";
@@ -202,6 +203,73 @@ test("transcribes recorder audio and runs the turn from the transcript", async (
 
   assert.equal(response.transcript, "Subtract the library amount from the total.");
   assert.equal(response.tutorText, action.spokenUtterance);
+});
+
+test("emits safe timing logs for the voice turn stages", async () => {
+  const store = new MemorySessionStore();
+  const session = await store.createSession(ownerKey, { title: "Observability test" });
+  await seedNonSharingStepLoop(store, session.id);
+
+  const privateTranscript = "private pear phrase";
+  const privateTutorText = "private tutor phrase";
+  const logs: Record<string, unknown>[] = [];
+  const observability = createObservabilityContext(
+    { route: "test", sessionId: session.id, turnId: "test-turn" },
+    { emitLog: (entry) => logs.push(entry) }
+  );
+
+  fake = installVoiceProviders({
+    transcribe: { text: privateTranscript },
+    verifier: { studentStatus: "partial", confidence: "medium", correctionHint: "Try grouping the pencils first." },
+    tutor: {
+      move: "scaffold_hint",
+      nextPhase: "step_loop",
+      spokenUtterance: privateTutorText
+    },
+    tts: new Uint8Array([1, 2, 3, 4])
+  });
+
+  await handleVoicePipelineTurnWithStore(
+    {
+      audio: {
+        dataUrl: "data:audio/webm;codecs=opus;base64,AQIDBA==",
+        mimeType: "audio/webm;codecs=opus",
+        name: "student-turn.webm",
+        size: 4
+      },
+      sessionId: session.id
+    },
+    voiceServiceEnv,
+    store,
+    context,
+    observability
+  );
+
+  const stages = new Set(logs.map((entry) => entry.stage));
+  for (const stage of [
+    "voice.session_load",
+    "voice.settings",
+    "voice.stt",
+    "voice.grade",
+    "voice.tutor_action",
+    "voice.tts",
+    "voice.commit",
+    "reasoning.workflow"
+  ]) {
+    assert.ok(stages.has(stage), `expected timing log for ${stage}`);
+  }
+
+  const workflows = logs
+    .filter((entry) => entry.stage === "reasoning.workflow")
+    .map((entry) => entry.workflow)
+    .sort();
+  assert.deepEqual(workflows, ["tutor-turn", "verifier"]);
+  assert.ok(logs.every((entry) => typeof entry.durationMs === "number"));
+
+  const serializedLogs = JSON.stringify(logs);
+  assert.equal(serializedLogs.includes(privateTranscript), false, "transcripts must not be logged");
+  assert.equal(serializedLogs.includes(privateTutorText), false, "tutor speech must not be logged");
+  assert.equal(serializedLogs.includes("AQIDBA=="), false, "audio bytes must not be logged");
 });
 
 test("rejects a solving move during the comprehension gate before reaching TTS", async () => {

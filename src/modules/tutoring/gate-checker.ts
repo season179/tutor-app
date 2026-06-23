@@ -4,6 +4,7 @@ import {
   runReasoningWorkflow,
   type ReasoningEnv
 } from "../../providers/reasoning/reasoning-binding.js";
+import type { ObservabilityContext } from "../../core/observability.js";
 import type { GateStage } from "./phase-policy.js";
 import { scrubComputedSolutionFromText, type ProblemFrame } from "../problems/problem-frame.js";
 import { isJsonObject } from "../../core/schema-parser.js";
@@ -86,7 +87,8 @@ export async function checkGateStage(
   frame: ProblemFrame,
   studentText: string,
   env: GateCheckerEnv,
-  settings?: ProviderSettings
+  settings?: ProviderSettings,
+  observability?: ObservabilityContext
 ): Promise<GateCheckerVerdict> {
   const trimmed = studentText.trim();
 
@@ -102,7 +104,13 @@ export async function checkGateStage(
     gateStageInstructions(stage),
     gateStageUserContent(stage, frame, trimmed)
   );
-  const result = await runReasoningWorkflow("gate-check", input, env, settings ? modelExtraForStage(settings, "gate-check") : undefined);
+  const result = await runReasoningWorkflow(
+    "gate-check",
+    input,
+    env,
+    settings ? modelExtraForStage(settings, "gate-check") : undefined,
+    { attributes: { gateStage: stage }, observability }
+  );
 
   try {
     return parseGateCheckerVerdict(result);
@@ -120,9 +128,10 @@ export function checkGateRestatement(
   frame: ProblemFrame,
   studentText: string,
   env: GateCheckerEnv,
-  settings?: ProviderSettings
+  settings?: ProviderSettings,
+  observability?: ObservabilityContext
 ): Promise<GateCheckerVerdict> {
-  return checkGateStage("restatement", frame, studentText, env, settings);
+  return checkGateStage("restatement", frame, studentText, env, settings, observability);
 }
 
 function parseGateCheckerVerdict(value: JsonValue): GateCheckerVerdict {

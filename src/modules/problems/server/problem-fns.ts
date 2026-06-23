@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { authenticateServerRequest, workerEnv } from "../../../server-request-context.js";
+import { createCloudflareObservability } from "../../../core/cloudflare-observability.js";
+import { observeStage } from "../../../core/observability.js";
 import { writeServerFnMiddleware } from "../../../core/server-fn-middleware.js";
 import {
   createProblemContextHandlerEnv,
@@ -35,7 +37,22 @@ export const extractQuestionFn = createServerFn({ method: "POST" })
   .validator((input: ExtractQuestionRequest) => input)
   .handler(async ({ data }) => {
     const { context, store } = await authenticateServerRequest();
-    return handleExtractQuestionRequest(data, createProblemContextHandlerEnv(workerEnv()), store, context);
+    const observability = createCloudflareObservability({
+      operation: "extract_question",
+      requestId: crypto.randomUUID(),
+      route: "server_fn",
+      sessionId: data.sessionId,
+      worker: "ai-tutor"
+    });
+    return observeStage(observability, "problem.extract_request", {}, () =>
+      handleExtractQuestionRequest(
+        data,
+        createProblemContextHandlerEnv(workerEnv()),
+        store,
+        context,
+        observability
+      )
+    );
   });
 
 export const requestPreviewUrlFn = createServerFn({ method: "POST" })

@@ -1,5 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 
+import { createCloudflareObservability } from "../../core/cloudflare-observability.js";
+import { observeStage } from "../../core/observability.js";
 import { D1SessionStore } from "./d1-session-store.js";
 import type { RequestContext } from "../../core/request-context.js";
 import { handleVoicePipelineTurnWithStore, type VoicePipelineServiceEnv } from "../voice/voice-pipeline-service.js";
@@ -22,20 +24,47 @@ type SessionRuntimeEnv = VoicePipelineServiceEnv & {
  */
 export class SessionRuntimeDO extends DurableObject<SessionRuntimeEnv> {
   async processTurn(payload: ProcessTurnPayload): Promise<VoicePipelineTurnResponse> {
-    const store = new D1SessionStore(this.env.DB);
-    const response = await handleVoicePipelineTurnWithStore(payload.body, this.env, store, payload.context);
+    const request = payload.body as Partial<VoicePipelineTurnRequest>;
+    const observability = createCloudflareObservability({
+      operation: "voice_turn",
+      route: "durable_object",
+      sessionId: typeof request.sessionId === "string" ? request.sessionId : undefined,
+      turnId: crypto.randomUUID(),
+      worker: "ai-tutor"
+    });
 
-    const request = payload.body as VoicePipelineTurnRequest;
-    await this.ctx.storage.put("ownerKey", payload.context.ownerKey);
-    await this.ctx.storage.put("sessionId", request.sessionId);
+    return observeStage(observability, "voice.turn", {}, async () => {
+      const store = new D1SessionStore(this.env.DB);
+      const response = await handleVoicePipelineTurnWithStore(
+        payload.body,
+        this.env,
+        store,
+        payload.context,
+        observability
+      );
 
-    if (shouldArmHintTimer(response.session.currentPhase)) {
-      await this.ctx.storage.setAlarm(Date.now() + hintWaitMs);
-    } else {
-      await this.ctx.storage.deleteAlarm();
-    }
+      const sessionId = (payload.body as VoicePipelineTurnRequest).sessionId;
+      await observeStage(
+        observability,
+        "voice.hint_alarm",
+        {
+          armed: shouldArmHintTimer(response.session.currentPhase),
+          currentPhase: response.session.currentPhase
+        },
+        async () => {
+          await this.ctx.storage.put("ownerKey", payload.context.ownerKey);
+          await this.ctx.storage.put("sessionId", sessionId);
 
-    return response;
+          if (shouldArmHintTimer(response.session.currentPhase)) {
+            await this.ctx.storage.setAlarm(Date.now() + hintWaitMs);
+          } else {
+            await this.ctx.storage.deleteAlarm();
+          }
+        }
+      );
+
+      return response;
+    });
   }
 
   override async alarm(): Promise<void> {

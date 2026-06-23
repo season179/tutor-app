@@ -1,6 +1,7 @@
 import { HttpError, type JsonValue } from "../../core/http-error.js";
 import { runReasoningWorkflow, type ReasoningEnv } from "../../providers/reasoning/reasoning-binding.js";
 import { isJsonObject } from "../../core/schema-parser.js";
+import type { ObservabilityContext } from "../../core/observability.js";
 import {
   defaultProblemFrame,
   frameContainsComputedSolution,
@@ -113,7 +114,8 @@ export function normalizeExtractionResponse(
 export async function extractQuestionFromImageUrl(
   imageUrl: string,
   env: QuestionExtractionServiceEnv,
-  settings?: ProviderSettings
+  settings?: ProviderSettings,
+  observability?: ObservabilityContext
 ): Promise<ExtractQuestionResponse> {
   // The extraction instructions cross as the workflow `input`, the presigned image URL as
   // `imageUrl` (Worker B fetches the bytes and attaches them as a vision image). When
@@ -125,7 +127,8 @@ export async function extractQuestionFromImageUrl(
     "extract-question",
     extractionInstructions,
     env,
-    { imageUrl, ...(settings ? modelExtraForStage(settings, "extract-question") : {}) }
+    { imageUrl, ...(settings ? modelExtraForStage(settings, "extract-question") : {}) },
+    { observability }
   );
 
   try {

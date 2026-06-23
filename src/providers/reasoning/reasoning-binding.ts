@@ -1,4 +1,9 @@
 import { HttpError, type JsonValue } from "../../core/http-error.js";
+import {
+  observeStage,
+  type ObservabilityAttributes,
+  type ObservabilityContext
+} from "../../core/observability.js";
 import { readLimitedTextBody } from "../../core/read-limited-text.js";
 import { isJsonObject } from "../../core/schema-parser.js";
 
@@ -31,6 +36,11 @@ export type ReasoningEnv = {
   REASONING?: Fetcher | undefined;
 };
 
+export type ReasoningWorkflowOptions = {
+  attributes?: ObservabilityAttributes | undefined;
+  observability?: ObservabilityContext | undefined;
+};
+
 /**
  * Combines a stage's dynamic `instructions` and its `input` text into the single string
  * Flue's `session.prompt(input)` receives. Flue composes the system prompt only from
@@ -54,6 +64,26 @@ export function composeReasoningInput(instructions: string, input: string): stri
  * @returns      The workflow's parsed `result` object (shape validated by Worker B's valibot).
  */
 export async function runReasoningWorkflow(
+  stage: string,
+  input: string,
+  env: ReasoningEnv,
+  extra?: Record<string, JsonValue>,
+  options?: ReasoningWorkflowOptions
+): Promise<JsonValue> {
+  return observeStage(
+    options?.observability,
+    "reasoning.workflow",
+    {
+      workflow: stage,
+      model: workflowModelSpecifier(extra),
+      timeoutMs: reasoningWorkflowTimeoutMs,
+      ...options?.attributes
+    },
+    () => runReasoningWorkflowUnobserved(stage, input, env, extra)
+  );
+}
+
+async function runReasoningWorkflowUnobserved(
   stage: string,
   input: string,
   env: ReasoningEnv,
@@ -151,6 +181,10 @@ export async function runReasoningWorkflow(
   return isJsonObject(parsed) && "result" in parsed
     ? (parsed as { result: JsonValue }).result
     : parsed;
+}
+
+function workflowModelSpecifier(extra: Record<string, JsonValue> | undefined): string | undefined {
+  return typeof extra?.model === "string" ? extra.model : undefined;
 }
 
 const maxWorkflowResultBytes = 256_000;

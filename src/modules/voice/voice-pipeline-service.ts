@@ -22,6 +22,11 @@ import {
 } from "../tutoring/phase-policy.js";
 import { scrubComputedSolutionFromText, type ProblemContextRecord } from "../problems/problem-frame.js";
 import type { RequestContext } from "../../core/request-context.js";
+import {
+  extendObservability,
+  observeStage,
+  type ObservabilityContext
+} from "../../core/observability.js";
 import type { SessionStore } from "../sessions/session-store.js";
 import {
   studentTurnEventMessage,
@@ -134,10 +139,19 @@ export async function handleVoicePipelineTurnWithStore(
   body: unknown,
   env: VoicePipelineServiceEnv,
   store: SessionStore,
-  requestContext: RequestContext
+  requestContext: RequestContext,
+  observability?: ObservabilityContext
 ): Promise<VoicePipelineTurnResponse> {
   const request = parseVoicePipelineTurnRequest(body);
-  const detail = await store.getSession(requestContext.ownerKey, request.sessionId);
+  const turnObservability = extendObservability(observability, {
+    hasAudio: Boolean(request.audio),
+    hasImage: Boolean(request.image),
+    kickoff: Boolean(request.kickoff),
+    sessionId: request.sessionId
+  });
+  const detail = await observeStage(turnObservability, "voice.session_load", {}, () =>
+    store.getSession(requestContext.ownerKey, request.sessionId)
+  );
 
   if (!detail) {
     throw new HttpError(404, "Session not found");
@@ -145,17 +159,28 @@ export async function handleVoicePipelineTurnWithStore(
 
   // Load the settings snapshot once per turn — one D1 read covers the audio options and every
   // reasoning stage (gate/verifier/tutor) the turn may invoke, threaded through below.
-  const settings = await loadProviderSettings(env);
+  const settings = await observeStage(turnObservability, "voice.settings", {}, () =>
+    loadProviderSettings(env)
+  );
   const options = createVoicePipelineOptions(env, settings);
 
   // The tutor's opening turn: it speaks first, before the student says anything. Skip the
   // student-text/gate/grader machinery and just produce the first move from the confirmed
   // problem. Branches early because none of the per-student-turn artifacts apply.
   if (request.kickoff) {
-    return handleKickoffTurn(detail, request.sessionId, options, env, store, requestContext.ownerKey, settings);
+    return handleKickoffTurn(
+      detail,
+      request.sessionId,
+      options,
+      env,
+      store,
+      requestContext.ownerKey,
+      settings,
+      turnObservability
+    );
   }
 
-  const studentText = await readStudentText(request, options);
+  const studentText = await readStudentText(request, options, turnObservability);
   const fromPhase = detail.session.currentPhase;
   let gateStatus = detail.session.gateStatus;
   // getSession already loaded the problem context for this session — reuse it instead of a
@@ -167,7 +192,13 @@ export async function handleVoicePipelineTurnWithStore(
   if (shouldEvaluateGateStage(fromPhase, gateStatus, studentText, problemContext)) {
     gateStageChecked = gateStageForStatus(gateStatus);
     if (gateStageChecked) {
-      gateVerdict = await checkGateStage(gateStageChecked, problemContext, studentText, env, settings);
+      const checkedStage = gateStageChecked;
+      gateVerdict = await observeStage(
+        turnObservability,
+        "voice.gate_check",
+        { fromPhase, gateStage: checkedStage },
+        () => checkGateStage(checkedStage, problemContext, studentText, env, settings, turnObservability)
+      );
       if (gateVerdict.accepted) {
         // Advance exactly one read; only the final restatement flips the gate to complete.
         gateStatus = nextGateStatus(gateStatus);
@@ -180,37 +211,51 @@ export async function handleVoicePipelineTurnWithStore(
     activeStep = seedActiveStepForPhase(fromPhase, problemContext!);
   }
 
-  const checkerVerdict = await gradeStudentTurn(
-    {
-      activeStep,
-      frame: problemContext,
-      gateStatus,
-      lastTutorAsk: latestTutorAsk(detail),
-      phase: fromPhase,
-      studentText
-    },
-    env,
-    settings
+  const checkerVerdict = await observeStage(
+    turnObservability,
+    "voice.grade",
+    { fromPhase, gateStatus },
+    () =>
+      gradeStudentTurn(
+        {
+          activeStep,
+          frame: problemContext,
+          gateStatus,
+          lastTutorAsk: latestTutorAsk(detail),
+          phase: fromPhase,
+          studentText
+        },
+        env,
+        settings,
+        turnObservability
+      )
   );
 
   const supportLevel = nextSupportLevel(detail.session.supportLevel, checkerVerdict, studentText);
 
-  const action = await proposeTutorAction(
-    {
-      activeStep,
-      detail,
-      gateStatus,
-      image: request.image ?? null,
-      problemContext,
-      stepVerifierVerdict: checkerVerdict,
-      studentText,
-      supportLevel
-    },
-    env,
-    settings
+  const action = await observeStage(
+    turnObservability,
+    "voice.tutor_action",
+    { fromPhase, gateStatus, supportLevel },
+    () =>
+      proposeTutorAction(
+        {
+          activeStep,
+          detail,
+          gateStatus,
+          image: request.image ?? null,
+          problemContext,
+          stepVerifierVerdict: checkerVerdict,
+          studentText,
+          supportLevel
+        },
+        env,
+        settings,
+        turnObservability
+      )
   );
 
-  const audio = await createTutorSpeech(action.spokenUtterance, options);
+  const audio = await createTutorSpeech(action.spokenUtterance, options, turnObservability);
   const publicLesson = projectToPublicLesson(action, checkerVerdict);
   let toPhase = nextPhaseFor(fromPhase, action, gateStatus);
   ({ activeStep, toPhase } = applyServerPhaseOverrides({
@@ -308,17 +353,23 @@ export async function handleVoicePipelineTurnWithStore(
   // reflection as one atomic unit, guarded by an optimistic lock on the phase we read. A null
   // result means a concurrent turn already moved the session off `fromPhase`, so this turn is
   // stale and nothing was written: bail rather than speaking over the turn that won the race.
-  const committed = await store.commitTurn(requestContext.ownerKey, request.sessionId, {
-    activate: detail.session.status !== "active",
-    advance: { activeStep, currentPhase: toPhase, gateStatus, supportLevel },
-    comprehensionCheck:
-      gateVerdict && gateStageChecked
-        ? { accepted: gateVerdict.accepted, checkKind: gateStageChecked, studentResponse: studentText }
-        : null,
-    events: turnEvents,
-    expectedPhase: fromPhase,
-    reflection: fromPhase === "memory_write" && studentText.trim() ? { reflectionText: studentText } : null
-  });
+  const committed = await observeStage(
+    turnObservability,
+    "voice.commit",
+    { eventCount: turnEvents.length, fromPhase, toPhase },
+    () =>
+      store.commitTurn(requestContext.ownerKey, request.sessionId, {
+        activate: detail.session.status !== "active",
+        advance: { activeStep, currentPhase: toPhase, gateStatus, supportLevel },
+        comprehensionCheck:
+          gateVerdict && gateStageChecked
+            ? { accepted: gateVerdict.accepted, checkKind: gateStageChecked, studentResponse: studentText }
+            : null,
+        events: turnEvents,
+        expectedPhase: fromPhase,
+        reflection: fromPhase === "memory_write" && studentText.trim() ? { reflectionText: studentText } : null
+      })
+  );
   if (!committed) {
     throw new HttpError(409, "This session was advanced by another turn. Please retry.");
   }
@@ -340,7 +391,8 @@ async function handleKickoffTurn(
   env: VoicePipelineServiceEnv,
   store: SessionStore,
   ownerKey: string,
-  settings: ProviderSettings
+  settings: ProviderSettings,
+  observability?: ObservabilityContext
 ): Promise<VoicePipelineTurnResponse> {
   const fromPhase = detail.session.currentPhase;
   if (fromPhase !== "session_open") {
@@ -352,23 +404,30 @@ async function handleKickoffTurn(
   const supportLevel = detail.session.supportLevel;
   const activeStep = detail.session.activeStep;
 
-  const action = await proposeTutorAction(
-    {
-      activeStep,
-      detail,
-      gateStatus,
-      image: null,
-      kickoff: true,
-      problemContext,
-      stepVerifierVerdict: null,
-      studentText: "",
-      supportLevel
-    },
-    env,
-    settings
+  const action = await observeStage(
+    observability,
+    "voice.tutor_action",
+    { fromPhase, gateStatus, supportLevel },
+    () =>
+      proposeTutorAction(
+        {
+          activeStep,
+          detail,
+          gateStatus,
+          image: null,
+          kickoff: true,
+          problemContext,
+          stepVerifierVerdict: null,
+          studentText: "",
+          supportLevel
+        },
+        env,
+        settings,
+        observability
+      )
   );
 
-  const audio = await createTutorSpeech(action.spokenUtterance, options);
+  const audio = await createTutorSpeech(action.spokenUtterance, options, observability);
   const publicLesson = projectToPublicLesson(action, null);
   // No server phase overrides apply at session_open (they all key off step_loop/answer_check/
   // memory_write), so the proposed nextPhase is the only advance to honour.
@@ -399,28 +458,34 @@ async function handleKickoffTurn(
     tutorText: action.spokenUtterance
   });
 
-  const committed = await store.commitTurn(ownerKey, sessionId, {
-    activate: detail.session.status !== "active",
-    advance: { activeStep, currentPhase: toPhase, gateStatus, supportLevel },
-    comprehensionCheck: null,
-    events: [
-      {
-        message: tutorTurnEventMessage,
-        value: {
-          schemaVersion: tutorActionSchemaVersion,
-          lesson: publicLesson,
-          move: action.move,
-          phase: fromPhase,
-          nextPhase: toPhase,
-          gateStatus,
-          text: action.spokenUtterance,
-          verdict: null
-        }
-      }
-    ],
-    expectedPhase: fromPhase,
-    reflection: null
-  });
+  const committed = await observeStage(
+    observability,
+    "voice.commit",
+    { eventCount: 1, fromPhase, toPhase },
+    () =>
+      store.commitTurn(ownerKey, sessionId, {
+        activate: detail.session.status !== "active",
+        advance: { activeStep, currentPhase: toPhase, gateStatus, supportLevel },
+        comprehensionCheck: null,
+        events: [
+          {
+            message: tutorTurnEventMessage,
+            value: {
+              schemaVersion: tutorActionSchemaVersion,
+              lesson: publicLesson,
+              move: action.move,
+              phase: fromPhase,
+              nextPhase: toPhase,
+              gateStatus,
+              text: action.spokenUtterance,
+              verdict: null
+            }
+          }
+        ],
+        expectedPhase: fromPhase,
+        reflection: null
+      })
+  );
   if (!committed) {
     throw new HttpError(409, "This session was advanced by another turn. Please retry.");
   }
@@ -614,7 +679,8 @@ function nextPhaseFor(
 
 async function readStudentText(
   request: VoicePipelineTurnRequest,
-  options: VoicePipelineOptions
+  options: VoicePipelineOptions,
+  observability?: ObservabilityContext
 ): Promise<string> {
   const typedText = request.text?.trim() ?? "";
 
@@ -622,7 +688,18 @@ async function readStudentText(
     return typedText;
   }
 
-  const transcript = await transcribeAudio(request.audio, options);
+  const transcript = await observeStage(
+    observability,
+    "voice.stt",
+    {
+      audioBytes: request.audio.size,
+      audioDataUrlLength: request.audio.dataUrl.length,
+      audioMimeType: request.audio.mimeType,
+      model: options.transcribeModel,
+      provider: "openrouter"
+    },
+    () => transcribeAudio(request.audio!, options)
+  );
   return transcript || typedText;
 }
 
@@ -639,7 +716,8 @@ async function transcribeAudio(
 async function proposeTutorAction(
   input: TutorTurnInput,
   env: VoicePipelineServiceEnv,
-  settings: ProviderSettings
+  settings: ProviderSettings,
+  observability?: ObservabilityContext
 ): Promise<ProposedTutorAction> {
   const phase = input.detail.session.currentPhase;
   const gateStatus = input.gateStatus;
@@ -653,7 +731,14 @@ async function proposeTutorAction(
       rejectionReasons,
       input.kickoff ?? false
     );
-    const payload = await proposeTutorActionViaBinding(input, instructions, env, settings);
+    const payload = await proposeTutorActionViaBinding(
+      input,
+      instructions,
+      env,
+      settings,
+      attempt + 1,
+      observability
+    );
     const outputText = extractOutputText(payload);
 
     if (!outputText) {
@@ -710,30 +795,47 @@ async function proposeTutorActionViaBinding(
   input: TutorTurnInput,
   instructions: string,
   env: VoicePipelineServiceEnv,
-  settings: ProviderSettings
+  settings: ProviderSettings,
+  attempt: number,
+  observability?: ObservabilityContext
 ): Promise<JsonValue> {
   const composedInput = composeReasoningInput(instructions, createTutorPrompt(input));
   const extra: Record<string, JsonValue> = { ...modelExtraForStage(settings, "tutor-turn") };
   if (input.image) {
     extra.image = splitPromptImage(input.image.dataUrl);
   }
-  const result = await runReasoningWorkflow("tutor-turn", composedInput, env, extra);
+  const result = await runReasoningWorkflow("tutor-turn", composedInput, env, extra, {
+    attributes: { attempt, hasImage: Boolean(input.image) },
+    observability
+  });
   return { output_text: JSON.stringify(result) };
 }
 
 async function createTutorSpeech(
   text: string,
-  options: VoicePipelineOptions
+  options: VoicePipelineOptions,
+  observability?: ObservabilityContext
 ): Promise<VoicePipelineAudioOutput> {
   // OpenRouter TTS takes JSON `{ model, input, voice, response_format }` and returns raw
   // binary audio on 2xx (the helper handles the binary read + the data-URL wrap). Gemini
   // 3.1 Flash TTS has no style/instructions field, so the tutor delivery direction is
   // folded into `input` inside the helper.
-  return synthesizeSpeechViaOpenRouter(text, {
-    apiKey: options.openRouterApiKey,
-    model: options.ttsModel,
-    voice: options.voice
-  });
+  return observeStage(
+    observability,
+    "voice.tts",
+    {
+      inputCharCount: text.length,
+      model: options.ttsModel,
+      provider: "openrouter",
+      voice: options.voice
+    },
+    () =>
+      synthesizeSpeechViaOpenRouter(text, {
+        apiKey: options.openRouterApiKey,
+        model: options.ttsModel,
+        voice: options.voice
+      })
+  );
 }
 
 function createTutorPrompt(input: TutorTurnInput): string {

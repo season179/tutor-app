@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 
 import { authenticateServerRequest, workerEnv } from "../../../server-request-context.js";
+import { createCloudflareObservability } from "../../../core/cloudflare-observability.js";
 import { HttpError } from "../../../core/http-error.js";
+import { observeStage } from "../../../core/observability.js";
 import {
   serverFnMiddleware,
   writeServerFnMiddleware
@@ -95,12 +97,21 @@ export const voicePipelineTurnFn = createServerFn({ method: "POST" })
     // One Durable Object per session serializes turns and owns the hint timer; route
     // through it when the binding is present, falling back to the direct pipeline
     // (e.g. local dev without the DO) otherwise.
+    const parsed = parseVoicePipelineTurnRequest(data);
     const sessionRuntime = workerEnv().SESSION_RUNTIME;
     if (sessionRuntime) {
-      const parsed = parseVoicePipelineTurnRequest(data);
       const stub = sessionRuntime.getByName(parsed.sessionId);
       return stub.processTurn({ body: data, context });
     }
 
-    return handleVoicePipelineTurnWithStore(data, workerEnv(), store, context);
+    const observability = createCloudflareObservability({
+      operation: "voice_turn",
+      route: "direct",
+      sessionId: parsed.sessionId,
+      turnId: crypto.randomUUID(),
+      worker: "ai-tutor"
+    });
+    return observeStage(observability, "voice.turn", {}, () =>
+      handleVoicePipelineTurnWithStore(data, workerEnv(), store, context, observability)
+    );
   });

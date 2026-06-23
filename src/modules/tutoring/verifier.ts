@@ -11,6 +11,7 @@ import {
 import type { ComprehensionGateStatus, SessionPhase } from "./tutor-action.js";
 import { runVerifierAgent, type VerifierAgentEnv } from "./verifier-agent.js";
 import type { ProviderSettings } from "../settings/settings-types.js";
+import type { ObservabilityContext } from "../../core/observability.js";
 
 export type GradeTurnInput = {
   activeStep: ActiveStep | null;
@@ -45,7 +46,8 @@ export function shouldGradeTurn(
 export async function gradeStudentTurn(
   input: GradeTurnInput,
   env: VerifierAgentEnv,
-  settings?: ProviderSettings
+  settings?: ProviderSettings,
+  observability?: ObservabilityContext
 ): Promise<StepVerifierVerdict | null> {
   if (!shouldGradeTurn(input.phase, input.gateStatus, input.studentText)) {
     return null;
@@ -83,7 +85,8 @@ export async function gradeStudentTurn(
         studentText: input.studentText
       },
       env,
-      settings
+      settings,
+      observability
     );
     return llmStepVerdict(verdict);
   } catch (error) {

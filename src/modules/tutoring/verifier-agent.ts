@@ -5,6 +5,7 @@ import {
   type ReasoningEnv
 } from "../../providers/reasoning/reasoning-binding.js";
 import { isJsonObject } from "../../core/schema-parser.js";
+import type { ObservabilityContext } from "../../core/observability.js";
 import {
   scrubComputedSolutionFromFrame,
   scrubComputedSolutionFromText,
@@ -95,7 +96,8 @@ function verifierUserContent(input: VerifierAgentInput, safeFrame: ProblemFrame)
 export async function runVerifierAgent(
   input: VerifierAgentInput,
   env: VerifierAgentEnv,
-  settings?: ProviderSettings
+  settings?: ProviderSettings,
+  observability?: ObservabilityContext
 ): Promise<VerifierVerdict> {
   // Strip any worked solution (numeric-only target, "= 6", "the answer is 6") before the
   // frame reaches the model — defense-in-depth on top of the scrub done at extraction.
@@ -104,7 +106,13 @@ export async function runVerifierAgent(
     verifierInstructions,
     verifierUserContent(input, safeFrame)
   );
-  const result = await runReasoningWorkflow("verifier", composedInput, env, settings ? modelExtraForStage(settings, "verifier") : undefined);
+  const result = await runReasoningWorkflow(
+    "verifier",
+    composedInput,
+    env,
+    settings ? modelExtraForStage(settings, "verifier") : undefined,
+    { attributes: { verifierKind: input.kind }, observability }
+  );
 
   try {
     return parseVerifierVerdict(result);

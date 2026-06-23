@@ -7,6 +7,10 @@
     "enabled": true,
     "logs": {
       "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1
     }
   },
   // Model specifiers are provider/model (e.g. openai/gpt-5.5, openrouter/openai/gpt-5.5).

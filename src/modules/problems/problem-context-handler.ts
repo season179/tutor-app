@@ -1,4 +1,9 @@
 import { HttpError, sessionNotFoundHttpError } from "../../core/http-error.js";
+import {
+  extendObservability,
+  observeStage,
+  type ObservabilityContext
+} from "../../core/observability.js";
 import { initialGateStatus } from "../tutoring/phase-policy.js";
 import type { RequestContext } from "../../core/request-context.js";
 import type { SessionStore } from "../sessions/session-store.js";
@@ -53,51 +58,73 @@ export async function handleExtractQuestionRequest(
   body: unknown,
   env: ProblemContextHandlerEnv,
   store: SessionStore,
-  context: RequestContext
+  context: RequestContext,
+  observability?: ObservabilityContext
 ): Promise<ExtractQuestionResponse> {
   const request = parseExtractQuestionRequest(body);
-  await requireOwnedSession(store, context.ownerKey, request.sessionId);
-  requireOwnedObjectKey(request.objectKey, request.sessionId);
-
-  await assertProblemImageExists(env, request.objectKey);
-
-  const readUrl = await createProblemImageReadUrl(env, request.objectKey);
-  // Load the settings snapshot once for the extraction call so the extract-question stage's
-  // model is shipped from the DB rather than Worker B's env default.
-  const settings = await loadProviderSettings(env);
-  const extraction = await extractQuestionFromImageUrl(readUrl.url, env, settings);
-
-  await store.saveProblemContext(context.ownerKey, {
-    extractionConfidence: extraction.confidence,
-    extractionOutcome: extraction.outcome,
-    frame: extraction.frame,
-    r2ObjectKey: request.objectKey,
+  const requestObservability = extendObservability(observability, {
+    operation: "extract_question",
     sessionId: request.sessionId
   });
+  await observeStage(requestObservability, "problem.session_verify", {}, () =>
+    requireOwnedSession(store, context.ownerKey, request.sessionId)
+  );
+  requireOwnedObjectKey(request.objectKey, request.sessionId);
 
-  await store.updateSession(context.ownerKey, request.sessionId, {
-    extractionNotes: extraction.notes,
-    extractionOutcome: extraction.outcome,
-    gateStatus: extraction.frame.unknownTarget ? initialGateStatus : null,
-    imageObjectKey: request.objectKey,
-    imagePrompt: extraction.question || null,
-    promptConfirmed: false
-  });
+  await observeStage(requestObservability, "problem.image_exists", {}, () =>
+    assertProblemImageExists(env, request.objectKey)
+  );
 
-  await store.appendEvent(context.ownerKey, request.sessionId, {
-    message: "Question extracted",
-    value: {
-      confidence: extraction.confidence,
-      extractedText: extraction.frame.extractedText,
-      notes: extraction.notes,
-      objectKey: request.objectKey,
-      outcome: extraction.outcome,
-      question: extraction.question,
-      questionLength: extraction.question.length,
-      requiresConfirmation: extraction.requiresConfirmation,
-      unknownTarget: extraction.frame.unknownTarget
+  const readUrl = await observeStage(requestObservability, "problem.read_url", {}, () =>
+    createProblemImageReadUrl(env, request.objectKey)
+  );
+  // Load the settings snapshot once for the extraction call so the extract-question stage's
+  // model is shipped from the DB rather than Worker B's env default.
+  const settings = await observeStage(requestObservability, "problem.settings", {}, () =>
+    loadProviderSettings(env)
+  );
+  const extraction = await observeStage(requestObservability, "problem.extract", {}, () =>
+    extractQuestionFromImageUrl(readUrl.url, env, settings, requestObservability)
+  );
+
+  await observeStage(
+    requestObservability,
+    "problem.persist",
+    { extractionOutcome: extraction.outcome, questionLength: extraction.question.length },
+    async () => {
+      await store.saveProblemContext(context.ownerKey, {
+        extractionConfidence: extraction.confidence,
+        extractionOutcome: extraction.outcome,
+        frame: extraction.frame,
+        r2ObjectKey: request.objectKey,
+        sessionId: request.sessionId
+      });
+
+      await store.updateSession(context.ownerKey, request.sessionId, {
+        extractionNotes: extraction.notes,
+        extractionOutcome: extraction.outcome,
+        gateStatus: extraction.frame.unknownTarget ? initialGateStatus : null,
+        imageObjectKey: request.objectKey,
+        imagePrompt: extraction.question || null,
+        promptConfirmed: false
+      });
+
+      await store.appendEvent(context.ownerKey, request.sessionId, {
+        message: "Question extracted",
+        value: {
+          confidence: extraction.confidence,
+          extractedText: extraction.frame.extractedText,
+          notes: extraction.notes,
+          objectKey: request.objectKey,
+          outcome: extraction.outcome,
+          question: extraction.question,
+          questionLength: extraction.question.length,
+          requiresConfirmation: extraction.requiresConfirmation,
+          unknownTarget: extraction.frame.unknownTarget
+        }
+      });
     }
-  });
+  );
 
   return extraction;
 }
